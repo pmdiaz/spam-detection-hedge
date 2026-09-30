@@ -5,8 +5,9 @@
 **Origen del tema:** `referencias/clase_2_ventas_online.pdf`, slide 79 ("Ideas para el paper"), ítem 3:
 *"Extender el caso de detección de spam a un clasificador que se reentrena online con Hedge,
 y comparar contra un modelo estático."*
-**Estado:** etapas 1-7 implementadas y verificadas; el experimento completo con 20 semillas está
-corrido (resultados en §6). Faltan las figuras (etapa 8) y la redacción (etapa 9). El plan incorpora
+**Estado:** etapas 1-8 implementadas y verificadas: el experimento completo con 20 semillas está
+corrido (resultados en §6) y las tres figuras del paper están generadas (`figuras/*.pdf`). Falta la
+redacción (etapa 9). El plan incorpora
 lo que se aprendió al implementar: ataque por duplicación de vocal, experto estructural enriquecido,
 cada cota con su η, la construcción sintética, estático fijo en Naive Bayes y α de SGD fijo.
 Quedan decisiones menores abiertas (§9).
@@ -80,6 +81,24 @@ originales de Hedge y de EXP3 se prueban bajo el mismo supuesto.
 ### Las dos cotas
 
 **Cota de peor caso** (la de la slide 73): `R_T ≤ √(2 T ln K)`.
+
+**Nota sobre la constante, que el paper tiene que resolver con una sola versión.** Con η fijo, el
+lema de Hoeffding da una cota válida en **toda** ronda t, no solo al final:
+
+```
+R_t  ≤  ln K / η  +  η · t / 8
+```
+
+Con `η = √(8 ln K / T)`, en `t = T` vale `√(T ln K / 2)`: **la mitad** de la `√(2 T ln K)` de la
+slide. Las dos son correctas; la de la slide es conservadora. Con nuestros números: 59,9 contra
+119,8. El paper usa la de Hoeffding, que es la que se grafica como curva en la Fig. 2, con una nota
+sobre la constante de la slide.
+
+**Lo mismo vale para la cota small-loss.** El Teorema 2 de Freund & Schapire, con β fijo, vale en
+toda ronda t y contra cualquier experto i:
+`L_Hedge(t) ≤ (ln K + η · L_i(t)) / (1 − e^{−η})`. Como depende de la pérdida acumulada del experto
+y no de t, su pendiente cambia cuando el ataque cambia el ritmo de errores del experto. Es lo que la
+Fig. 2A muestra como curva.
 
 **Cota fina** (Freund & Schapire 1997, Lema 4), en función de la pérdida del mejor experto:
 
@@ -480,23 +499,50 @@ retrospectiva, no solo el número. Con la primera versión del estructural exist
 fuera un experto casi trivial; con la enriquecida, el mejor experto fijo sobre el stream atacado es
 el estructural en las 20 semillas.
 
-### Figuras y tabla
+### Figuras del paper
 
-| | Contenido | Qué muestra |
+Tres figuras, generadas por `src/figuras.py` a partir de lo que guardó el experimento (no vuelve a
+correr nada). Todas son promedios sobre las 20 semillas.
+
+| Figura | Archivo | Contenido | Qué muestra |
+|---|---|---|---|
+| **Fig. 1** | `f1f2_combinada.pdf` | A: spam atrapado en ventana móvil de 300 rondas para estático, Hedge y SGD online. B: pesos de Hedge (stackplot) con el mismo eje temporal | El estático cae y no se recupera; Hedge cae con él y se recupera en ~1.000 rondas mientras migra el peso; SGD online aprende los tokens nuevos |
+| **Fig. 2** | `f3_regret.pdf` | A: regret de Hedge con `η_T` y con `η_L`, cada uno contra **su** cota como curva en el tiempo. B: la construcción sintética, determinístico contra randomizado | Que cada cota vale para su configuración; que la cota small-loss cambia de pendiente con el ataque (idea A2); que el determinístico tiene regret `T/2` |
+| **Fig. 3** | `f4_rho.pdf` | Errores en la mitad atacada contra ρ, para Hedge y SGD online (media ± desvío), con el estático como referencia | El cruce entre combinar y reentrenar entre ρ = 0,2 y 0,05 |
+
+Se generan también F1 y F2 por separado (`f1_sc_movil`, `f2_pesos`), por si se prefiere esa
+variante. Los números finos (BH, MCC, regret por ρ) van en una tabla, no en las figuras.
+
+**Diseño.** Ancho exacto de columna (3,3 pulgadas), letra de 8 pt, sin `bbox_inches="tight"` (que
+agrandaba la imagen y hacía que LaTeX la achicara). Un color por entidad, igual en todas las figuras,
+validado con el script de la guía de visualización, incluida la separación para daltonismo:
+
+| Entidad | Color | Estilo |
 |---|---|---|
-| **F1** | SC en ventana móvil de los 3 competidores principales, con el drift marcado. BH va a la tabla | El estático se cae y no se recupera; Hedge se recupera casi en el acto; SGD-online aprende los tokens nuevos |
-| **F2** | Evolución de los pesos `w^(i)_t` de Hedge (stackplot) | Ver la lectura correcta abajo |
-| **F3** | Panel A: regret de Hedge randomizado con η de peor caso y con η small-loss, cada uno contra **su** cota. Panel B: la construcción sintética, determinístico vs. randomizado | Que cada cota vale para su configuración; que el small-loss es mejor algoritmo; que el determinístico no tiene garantía |
-| **T1** | Errores en la mitad atacada de Hedge y **SGD online** por valor de ρ, con el estático como referencia; más el regret de Hedge contra `1/√ρ`. Puede ir como tabla o como figura con las dos curvas | El costo de la etiqueta escasa, y que con pocas etiquetas combinar le gana a reentrenar |
+| Estático / Naive Bayes | naranja | rayada |
+| Hedge randomizado (`η_T`) | azul | continua |
+| SGD online | aqua | punteada |
+| Estructural | violeta | — |
+| Otros léxicos (logística + árbol + reglas) | verde, con rayado a 45° | — |
+| Hedge con `η_L` (small-loss) | magenta | continua |
+| Hedge determinístico | rojo | continua |
 
-**La lectura correcta de F2.** El plan original esperaba que la masa "migrara" de los expertos
-léxicos al estructural *a causa* del ataque. No es lo que pasa: el estructural enriquecido ya era
-apenas mejor que Naive Bayes antes del ataque (58 contra 62 errores en la primera mitad), así que
-Hedge llega al ataque con el peso repartido entre los dos (0,42 y 0,34). Cuando el ataque rompe a
-Naive Bayes, la mayor parte del peso ya estaba sobre el experto robusto, y al final del stream tiene
-0,994. No hay migración provocada por el ataque: hay **hedging** literal. El algoritmo tenía la
-apuesta cubierta, y por eso la recuperación es casi instantánea. (Números de la semilla 0; verificar
-en F2 que el patrón se mantiene en el promedio de las 20.)
+Cada serie tiene además estilo de línea y etiqueta directa, para que se lea en blanco y negro. El
+validador rechazó el verde junto al naranja (con protanopia son casi iguales), y por eso las capas de
+los pesos van en el orden Naive Bayes, estructural, otros léxicos. En escala de grises el violeta y
+el verde daban el mismo gris, y por eso "otros léxicos" lleva el rayado.
+
+**La lectura correcta de los pesos** (Fig. 1B, promedio de 20 semillas). Tiene dos partes:
+
+1. **Hay hedging antes del ataque.** Cuando llega el ataque, el peso está repartido en tercios:
+   Naive Bayes 0,36, estructural 0,33, otros léxicos 0,31. Hedge no apostó todo al mejor experto
+   del momento.
+2. **Y hay una migración provocada por el ataque, que no es instantánea.** El spam atrapado por
+   Hedge primero cae junto con el del estático, hasta ~45%, y recién después se recupera; el peso
+   del estructural tarda unas 1.000 rondas en pasar de 0,33 a 0,95.
+
+Esto corrige lo que decía esta sección con la semilla 0 ("no hay migración, la recuperación es casi
+instantánea"). En esa semilla el estructural ya era el mejor antes del ataque; en el promedio no.
 
 ### Resultados con 20 semillas
 
@@ -529,9 +575,11 @@ peor caso no tiene garantía.
 
 | Configuración | Regret | Su cota | Bajo la cota |
 |---|---|---|---|
-| Randomizado, η de peor caso | 31,2 ± 1,6 | 119,8 | 20/20 |
+| Randomizado, η de peor caso | 31,2 ± 1,6 | 59,9 (119,8 con la constante de la slide) | 20/20 |
 | Randomizado, η small-loss (oráculo) | 15,0 ± 1,4 | 25,2 ± 0,7 | 20/20 |
 | Determinístico | −2,6 ± 4,8 | — | — |
+
+Sobre la cota de peor caso, ver la nota de §2: el paper usa `√(T ln K / 2)` = 59,9.
 
 **Pregunta 2 — cuánta etiqueta hace falta** (errores en la mitad atacada; Hedge y SGD ven las mismas
 rondas etiquetadas):
@@ -567,7 +615,7 @@ rondas etiquetadas):
 | 2. Marco formal | ½ col | Protocolo online, pérdida, regret, por qué oblivious (policy regret), las dos cotas |
 | 3. Algoritmos | ½ col | Hedge; cada cota con su η; determinístico vs. randomizado y la construcción sintética; etiqueta parcial y por qué no EXP3 |
 | 4. Setup experimental | ½ col | Dataset y baselines, los 5 expertos, el ataque y su calibración |
-| 5. Resultados | 1 col + 3 figs + tabla | F1, F2, F3 (dos paneles), T1 con lectura de cada una |
+| 5. Resultados | 1 col + 3 figs + tabla | Fig. 1 (spam atrapado y pesos), Fig. 2 (regret y cotas; construcción sintética), Fig. 3 (barrido de ρ), y una tabla con BH, MCC y regret |
 | 6. Discusión y limitaciones | ½ col | Ver abajo |
 | 7. Conclusión | ¼ col | Las dos respuestas, en una frase cada una |
 
@@ -612,7 +660,7 @@ paper_spam_hedge/src/
   verificar_etapa{2..6}.py   # ✓ verificaciones de cada etapa
   experimento.py         # ✓ todo lo anterior con 20 semillas, en paralelo y retomable
   agregar_resultados.py  # ✓ tablas con media ± desvío y resultados/resumen.json
-  figuras.py             # pendiente: F1, F2, F3 y la tabla T1
+  figuras.py             # ✓ las figuras del paper, desde los resultados guardados
 paper_spam_hedge/paper/
   paper.tex              # pendiente
   referencias.bib        # ✓
@@ -641,10 +689,10 @@ los expertos).
 | 5 ✓ | Estático y SGD online | Corren sobre la misma secuencia (huella del DataFrame atacado) |
 | 6 ✓ | Barrido de ρ, con Hedge y SGD online | El regret de Hedge crece al bajar ρ, de forma compatible con `1/√ρ`; Hedge y SGD ven las mismas rondas etiquetadas |
 | 7 ✓ | 20 semillas y agregación | Bandas de dispersión estables: SGD ±6, Hedge ±10, regret ±1,6. La primera corrida no las tenía (SGD ±32) y reveló los dos problemas corregidos en §4 |
-| 8 | Las 3 figuras y la tabla | Legibles en blanco y negro, a ancho de columna |
+| 8 ✓ | Las 3 figuras | Ancho exacto de 3,3 pulgadas con letra de 8 pt; paleta validada para daltonismo; revisadas en color y en escala de grises |
 | 9 | Redacción del `.tex` | Entra en 3 páginas a dos columnas |
 
-Los resultados de las etapas 5 a 7 están en §6.
+Los resultados de las etapas 5 a 8 están en §6.
 
 **Baselines de la etapa 2** (Almeida et al. 2011, Tabla 7, mismo corpus) contra lo medido,
 promediado sobre 5 semillas:
@@ -690,23 +738,28 @@ matplotlib 3.10.9). No hay LaTeX ni pandoc local: el `.tex` se compila en Overle
 - **El α de SGD online:** 1e-5, fijo. La CV lo elegía mal para un modelo que tiene que adaptarse.
   Detalle en §4.
 
+### Resueltas en la etapa 8
+
+- **Espacio:** F1 y F2 van fusionadas en una figura de dos paneles con el eje temporal compartido,
+  como sugirió el revisor. El paper queda con 3 figuras, y el eje compartido hace evidente que la
+  caída del spam atrapado por Hedge coincide con la migración de peso.
+- **Qué cota de peor caso usar:** la de Hoeffding, `√(T ln K / 2)` en t = T, con una nota sobre la
+  constante de la slide (§2).
+
 ### Abiertas
 
 Ordenadas por cuánto afectan lo que falta. Cada una lleva una recomendación.
 
-1. **Espacio.** F3 tiene dos paneles. La sugerencia del revisor de fusionar F1 y F2 en una figura
-   con el eje temporal compartido vuelve a ser atendible. *Recomendación:* decidir al armar las
-   figuras, con los gráficos a la vista.
-2. **Ablación del experto estructural.** Correr Hedge también con la versión simple del estructural
+1. **Ablación del experto estructural.** Correr Hedge también con la versión simple del estructural
    mostraría directamente la condición de la tesis: sin un experto que sobreviva no hay
    recuperación, con él sí. Cuesta poco (una corrida más) y ocupa una línea de tabla.
    *Recomendación:* hacerlo si entra.
-3. **`norm='l2'` en el vectorizador.** Para fidelidad con el `MN TF NB` de Almeida habría que usar
+2. **`norm='l2'` en el vectorizador.** Para fidelidad con el `MN TF NB` de Almeida habría que usar
    conteos crudos (`norm=None`) y volver a elegir α. *Recomendación:* dejarlo como está y declararlo;
    no cambia ninguna conclusión.
-4. **Referencia de Herbster & Warmuth (1998).** Si se menciona Fixed-Share en la discusión hace falta
+3. **Referencia de Herbster & Warmuth (1998).** Si se menciona Fixed-Share en la discusión hace falta
    la cita, que no está en `referencias/`.
-5. **Adversario adaptativo.** Queda fuera de la corrida y se menciona en la discusión con la
+4. **Adversario adaptativo.** Queda fuera de la corrida y se menciona en la discusión con la
    degradación teórica a `T^{2/3}` de Cesa-Bianchi, Dekel & Shamir.
 
 ---

@@ -9,7 +9,7 @@ datos/
 # Salidas del experimento
 resultados/
 figuras/*.png
-figuras/*.pdf
+# figuras/*.pdf se versiona: es lo que usa paper.tex (se regenera con src/figuras.py)
 
 # Python
 __pycache__/
