@@ -32,3 +32,28 @@ def obtener_expertos(semilla, verboso=True):
         archivo.write_bytes(pickle.dumps(expertos))
 
     return warmup, stream, expertos
+
+
+def obtener_indice_estatico(semilla, verboso=True):
+    """Indice del experto que funciona como modelo estatico en esa semilla.
+
+    Se elige por CV anidada sobre el warm-up (estatico.py), que tarda unos
+    minutos, asi que tambien se cachea.
+    """
+    from estatico import seleccionar_modelo_estatico
+
+    DIRECTORIO_CACHE.mkdir(parents=True, exist_ok=True)
+    archivo = DIRECTORIO_CACHE / f"estatico_semilla{semilla}.txt"
+
+    if archivo.exists():
+        return int(archivo.read_text().strip())
+
+    if verboso:
+        print(f"  eligiendo el modelo estatico de la semilla {semilla} (CV anidada)...")
+
+    corpus = cargar_corpus()
+    warmup, _ = dividir_warmup_y_stream(corpus, semilla=semilla)
+    indice, _, _ = seleccionar_modelo_estatico(warmup)
+
+    archivo.write_text(str(indice))
+    return indice

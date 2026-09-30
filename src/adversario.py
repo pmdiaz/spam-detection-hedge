@@ -174,3 +174,33 @@ class Adversario:
 
         atacado["texto"] = textos
         return atacado
+
+
+# Calibracion fijada en la etapa 3 (ver §5 del plan): ofuscacion de los 800
+# tokens mas delatores mas una good word inyectada. Lleva el Spam Caught del
+# modelo estatico de 86,5% a 38,1% sin violar la restriccion de longitud.
+CANTIDAD_TOKENS_OFUSCADOS = 800
+CANTIDAD_PALABRAS_INYECTADAS = 1
+TAMANO_LISTA_PALABRAS_BUENAS = 200
+
+
+def construir_stream_atacado(warmup, stream, semilla):
+    """Arma el adversario calibrado sobre el warm-up y ataca la segunda mitad.
+
+    Es la UNICA secuencia que ven todos los competidores: estatico, Hedge y SGD
+    online reciben exactamente este mismo DataFrame. Eso es lo que hace
+    comparable el regret entre ellos (adversario oblivious, §5).
+
+    Devuelve (stream atacado, indice de la primera ronda atacada).
+    """
+    pesos = calcular_pesos_tokens(warmup["texto"].tolist(), warmup["etiqueta"].to_numpy())
+
+    adversario = Adversario(
+        tokens_mas_delatores(pesos, CANTIDAD_TOKENS_OFUSCADOS),
+        palabras_mas_legitimas(pesos, TAMANO_LISTA_PALABRAS_BUENAS),
+        CANTIDAD_PALABRAS_INYECTADAS,
+    )
+
+    indice_inicio = len(stream) // 2
+    atacado = adversario.atacar_stream(stream, indice_inicio, semilla=semilla)
+    return atacado, indice_inicio
