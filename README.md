@@ -1,5 +1,7 @@
 # Aprendizaje online con Hedge para detección de spam
 
+**Autores:** Pablo Díaz y Ezequiel Martinez
+
 Trabajo final de **Tópicos Avanzados en Ciencia de Datos** (MCD210, Maestría en Ciencia de Datos,
 UdeSA — Daniel Fraiman). Paper de ~3 páginas que extiende el caso de detección de spam de la
 clase 2 a un esquema de aprendizaje online con Hedge.

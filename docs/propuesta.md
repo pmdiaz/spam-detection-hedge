@@ -1,12 +1,12 @@
 # Propuesta de trabajo final
 
-**Tópicos Avanzados en Ciencia de Datos (MCD210)** · Pablo Díaz · Septiembre 2026
+**Tópicos Avanzados en Ciencia de Datos (MCD210)** · Pablo Díaz y Ezequiel Martinez · Septiembre 2026
 **Tema:** aprendizaje online con Hedge para detección de spam bajo drift adversarial
 
 ---
 
-Tomo como punto de partida la tercera idea de la slide 79 —extender el caso de detección de spam a
-un clasificador online con Hedge y compararlo contra un modelo estático— pero propongo separar dos
+Tomamos como punto de partida la tercera idea de la slide 79 —extender el caso de detección de spam a
+un clasificador online con Hedge y compararlo contra un modelo estático— pero proponemos separar dos
 efectos que esa formulación deja mezclados. Un filtro que resiste a un spammer adaptativo puede
 lograrlo por dos vías distintas: **combinando** clasificadores fijos con pesos que se reacomodan, o
 **reentrenando** un único modelo con los datos que van llegando. Comparar Hedge contra un modelo
@@ -35,12 +35,12 @@ Freund & Schapire (1997), que depende de la pérdida del mejor experto y por eso
 que produce el ataque.
 
 La segunda pregunta es cuánta supervisión hace falta. El plan original incluía un competidor EXP3
-para medir el precio del feedback parcial, pero lo descarté: como los expertos son funciones
+para medir el precio del feedback parcial, pero lo descartamos: como los expertos son funciones
 determinísticas y el mensaje es observable, saber si la predicción jugada fue correcta revela la
 etiqueta verdadera, y con ella la pérdida de todos los expertos. En clasificación binaria el
 feedback bandit colapsa en información completa. El modelo realista de supervisión escasa en spam es
-otro: la etiqueta llega solo cuando el usuario reporta el mensaje. Lo formalizo con una probabilidad
-de observación $\rho$ y mido cómo se degrada el regret al reducirla, con la predicción teórica de un
+otro: la etiqueta llega solo cuando el usuario reporta el mensaje. Lo formalizamos con una probabilidad
+de observación $\rho$ y medimos cómo se degrada el regret al reducirla, con la predicción teórica de un
 crecimiento como $1/\sqrt{\rho}$.
 
 El alcance está acotado deliberadamente para que entre en tres páginas. El adversario es *oblivious*

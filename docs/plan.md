@@ -1,5 +1,6 @@
 # Plan de trabajo — Paper: aprendizaje online con Hedge para detección de spam
 
+**Autores:** Pablo Díaz y Ezequiel Martinez
 **Materia:** Tópicos Avanzados en Ciencia de Datos (MCD210) — Daniel Fraiman
 **Formato de entrega:** ~3 páginas, LaTeX a dos columnas (compilación en Overleaf), en español
 **Origen del tema:** `referencias/clase_2_ventas_online.pdf`, slide 79 ("Ideas para el paper"), ítem 3:
