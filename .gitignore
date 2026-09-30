@@ -1,0 +1,31 @@
+# Papers y material de cátedra: copyright de terceros, no se versionan.
+# Si el repositorio es privado y querés incluirlos, borrá estas dos líneas.
+referencias/*.pdf
+!referencias/README.md
+
+# Datos descargados
+datos/
+
+# Salidas del experimento
+resultados/
+figuras/*.png
+figuras/*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# LaTeX (el .tex sí se versiona)
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.synctex.gz
+paper/*.pdf
+
+# macOS
+.DS_Store
