@@ -444,7 +444,7 @@ stream atacado es el estructural (160 errores totales contra 255 de Naive Bayes)
 | **F1** | SC en ventana móvil de los 3 competidores principales, con el drift marcado. BH va a la tabla | El estático se cae y no se recupera; Hedge se recupera casi en el acto; SGD-online aprende los tokens nuevos |
 | **F2** | Evolución de los pesos `w^(i)_t` de Hedge (stackplot) | Ver la lectura correcta abajo |
 | **F3** | Panel A: regret de Hedge randomizado con η de peor caso y con η small-loss, cada uno contra **su** cota. Panel B: la construcción sintética, determinístico vs. randomizado | Que cada cota vale para su configuración; que el small-loss es mejor algoritmo; que el determinístico no tiene garantía |
-| **T1** | Tabla: regret final, SC y BH por valor de ρ | El costo de la etiqueta escasa, contrastado con `1/√ρ` |
+| **T1** | Errores en la mitad atacada de Hedge y **SGD online** por valor de ρ, con el estático como referencia; más el regret de Hedge contra `1/√ρ`. Puede ir como tabla o como figura con las dos curvas | El costo de la etiqueta escasa, y que con pocas etiquetas combinar le gana a reentrenar |
 
 **La lectura correcta de F2.** El plan original esperaba que la masa "migrara" de los expertos
 léxicos al estructural *a causa* del ataque. No es lo que pasa: el estructural enriquecido ya era
@@ -508,8 +508,9 @@ paper_spam_hedge/src/
   adversario.py          # ✓ duplicación de vocal + inyección acotada
   algoritmos.py          # ✓ Hedge det./random., cotas, η, construcción sintética
   cache_expertos.py      # ✓ cache en disco de los expertos entrenados por semilla
-  verificar_etapa{2,3,4}.py  # ✓ verificaciones de cada etapa
-  experimento.py         # pendiente: estático, Hedge, SGD online, ρ, 20 semillas
+  sgd_online.py          # ✓ competidor que reentrena, con etiqueta parcial
+  verificar_etapa{2..6}.py   # ✓ verificaciones de cada etapa
+  experimento.py         # pendiente: todo lo anterior con 20 semillas
   figuras.py             # pendiente: F1, F2, F3 y la tabla T1
 paper_spam_hedge/paper/
   paper.tex              # pendiente
@@ -530,8 +531,31 @@ gratis.
 | 2 ✓ | Los 5 expertos entrenados y congelados | SC sin drift contra los baselines de Almeida (ver abajo) |
 | 3 ✓ | Adversario y su calibración | El SC del estático cae de ~80% a ~40%; **el estructural sigue siendo el mejor experto en la mitad atacada**; la distribución de longitudes del spam atacado se superpone con la del original |
 | 4 ✓ | Hedge determinístico y randomizado | Sin drift, el regret del randomizado crece sublinealmente y queda bajo **la cota de su propio η**; la construcción sintética da regret lineal al determinístico |
-| 5 | Estático y SGD online | Corren sobre la misma secuencia |
-| 6 | Barrido de ρ | El regret crece al bajar ρ, de forma compatible con `1/√ρ` |
+| 5 ✓ | Estático y SGD online | Corren sobre la misma secuencia (huella del DataFrame atacado) |
+| 6 ✓ | Barrido de ρ, con Hedge y SGD online | El regret de Hedge crece al bajar ρ, de forma compatible con `1/√ρ`; Hedge y SGD ven las mismas rondas etiquetadas |
+
+**Resultados de la semilla 0 en las etapas 5 y 6** (errores en la mitad atacada; el estático comete
+193 en todos los casos):
+
+| ρ | Hedge randomizado | SGD online | Regret de Hedge | R/R(1) | `1/√ρ` |
+|---|---|---|---|---|---|
+| 1 | 117 ± 5 | **65** | 28,8 | 1,00 | 1,00 |
+| 0,5 | 128 ± 6 | **91** ± 8 | 42,6 | 1,48 | 1,41 |
+| 0,2 | 146 ± 12 | 140 ± 12 | 62,0 | 2,16 | 2,24 |
+| 0,05 | **179** ± 19 | 214 ± 23 | 98,2 | 3,42 | 4,47 |
+
+- Con todas las etiquetas, Hedge cubre el 59% de la brecha entre el estático y reentrenar.
+- Con etiquetas escasas la ventaja de reentrenar se achica, hay empate alrededor de ρ = 0,2, y con
+  ρ = 0,05 combinar gana y SGD online termina peor que el estático. Para recuperarse, reentrenar
+  tiene que aprender del orden de un peso por token nuevo; Hedge solo aprende K = 5 pesos. Matiza a
+  Lowd & Meek: *"frequent retraining"* requiere etiquetas frecuentes.
+- Pendiente log-log del regret de Hedge: −0,40 (teoría −0,5). La desviación está en ρ = 0,05: el
+  regret se acerca al techo de no aprender nunca (162,8, pesos uniformes siempre) y satura por
+  debajo de la ley `1/√ρ`.
+- Con ρ < 1 las pérdidas estimadas valen hasta `1/ρ` y la cota de la slide 73 no aplica. Se usa la
+  cota basada en la varianza del estimador, `ln K/η + ηT/(2ρ)`, la misma técnica de Auer et al.
+  para EXP3, con `η = √ρ · η_T`. SGD online no repondera por `1/ρ`: aprende de los ejemplos que
+  tiene, como un filtro real con los reportes de sus usuarios.
 | 7 | 20 semillas y agregación | Bandas de dispersión estables |
 | 8 | Las 3 figuras y la tabla | Legibles en blanco y negro, a ancho de columna |
 | 9 | Redacción del `.tex` | Entra en 3 páginas a dos columnas |

@@ -26,6 +26,7 @@ Decisiones:
 import numpy as np
 from sklearn.linear_model import SGDClassifier
 
+from algoritmos import sortear_rondas_con_etiqueta
 from expertos import construir_vectorizador, seleccionar_por_cv
 
 GRILLA_ALPHA = [1e-3, 1e-4, 1e-5, 1e-6]
@@ -35,29 +36,50 @@ def _construir_sgd(alpha):
     return SGDClassifier(loss="log_loss", alpha=alpha, max_iter=1000, random_state=0)
 
 
-def correr_sgd_online(warmup, stream):
-    """Devuelve (predicciones sobre el stream, alpha elegido).
+def elegir_alpha(warmup):
+    """alpha por CV sobre el warm-up (MCC y regla de un error estandar)."""
+    vectorizador = construir_vectorizador()
+    matriz_warmup = vectorizador.transform(warmup["texto"].tolist())
+    etiquetas_warmup = warmup["etiqueta"].to_numpy()
+    alpha, _ = seleccionar_por_cv(_construir_sgd, GRILLA_ALPHA, matriz_warmup, etiquetas_warmup)
+    return alpha
+
+
+def correr_sgd_online(warmup, stream, alpha=None, probabilidad_etiqueta=1.0, semilla=0):
+    """Devuelve (predicciones sobre el stream, alpha usado).
 
     El stream que se pasa es el mismo, ya atacado, que ven los demas
-    competidores.
+    competidores. Si no se pasa alpha, se elige por CV sobre el warm-up.
+
+    Con probabilidad_etiqueta < 1 el modelo solo se actualiza en las rondas en
+    que el usuario reporta la etiqueta. Las rondas se sortean con la MISMA
+    funcion y semilla que usa Hedge, asi que los dos ven exactamente las mismas
+    etiquetas. A diferencia de Hedge, aca no se repondera por 1/rho: un modelo
+    que reentrena simplemente aprende de los ejemplos que tiene, que es lo que
+    haria un filtro real con los reportes de sus usuarios.
     """
     vectorizador = construir_vectorizador()
     matriz_warmup = vectorizador.transform(warmup["texto"].tolist())
     etiquetas_warmup = warmup["etiqueta"].to_numpy()
 
-    alpha, _ = seleccionar_por_cv(_construir_sgd, GRILLA_ALPHA, matriz_warmup, etiquetas_warmup)
+    if alpha is None:
+        alpha = elegir_alpha(warmup)
 
     modelo = _construir_sgd(alpha)
     modelo.fit(matriz_warmup, etiquetas_warmup)
 
     matriz_stream = vectorizador.transform(stream["texto"].tolist())
     etiquetas_stream = stream["etiqueta"].to_numpy()
+    rondas_con_etiqueta = sortear_rondas_con_etiqueta(
+        len(etiquetas_stream), probabilidad_etiqueta, semilla
+    )
 
     predicciones = np.zeros(len(etiquetas_stream), dtype=int)
     for ronda in range(len(etiquetas_stream)):
         # Primero se predice...
         predicciones[ronda] = modelo.predict(matriz_stream[ronda])[0]
-        # ...y recien despues se ve la etiqueta y se actualiza.
-        modelo.partial_fit(matriz_stream[ronda], etiquetas_stream[ronda:ronda + 1])
+        # ...y recien despues, si el usuario reporto la etiqueta, se actualiza.
+        if rondas_con_etiqueta[ronda]:
+            modelo.partial_fit(matriz_stream[ronda], etiquetas_stream[ronda:ronda + 1])
 
     return predicciones, alpha

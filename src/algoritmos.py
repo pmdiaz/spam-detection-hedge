@@ -36,7 +36,24 @@ def eta_teorico(cantidad_rondas, cantidad_expertos):
     return np.sqrt(8.0 * np.log(cantidad_expertos) / cantidad_rondas)
 
 
-def correr_hedge(perdidas, predicciones, etiquetas, eta, randomizado, semilla=0):
+def sortear_rondas_con_etiqueta(cantidad_rondas, probabilidad_etiqueta, semilla):
+    """Decide en que rondas el usuario reporta la etiqueta (variante B, §3).
+
+    Hedge y SGD online usan esta misma funcion con la misma semilla, asi que en
+    cada corrida ven EXACTAMENTE las mismas rondas etiquetadas: la comparacion
+    entre combinar y reentrenar no depende de a quien le tocaron mas etiquetas.
+
+    Con rho = 1 todas las rondas tienen etiqueta y no se sortea nada.
+    """
+    if probabilidad_etiqueta >= 1.0:
+        return np.ones(cantidad_rondas, dtype=bool)
+
+    generador_etiquetas = np.random.default_rng([semilla, 1])
+    return generador_etiquetas.random(cantidad_rondas) < probabilidad_etiqueta
+
+
+def correr_hedge(perdidas, predicciones, etiquetas, eta, randomizado, semilla=0,
+                 probabilidad_etiqueta=1.0):
     """Corre Hedge sobre el stream y devuelve el historial de la corrida.
 
     Los pesos arrancan UNIFORMES en 1/K (slide 72). No se arrastran del warm-up:
@@ -47,9 +64,22 @@ def correr_hedge(perdidas, predicciones, etiquetas, eta, randomizado, semilla=0)
     randomizado=False  -> voto pesado deterministico (slide 71).
     randomizado=True   -> se muestrea un experto I_t ~ w_t y se juega su prediccion,
                           que es la version para la que vale la cota.
+
+    probabilidad_etiqueta (rho) modela la etiqueta escasa (variante B, §3 del
+    plan): el usuario reporta cada mensaje con probabilidad rho. En las rondas
+    sin etiqueta el jugador igual predice y sufre su perdida real, pero NO puede
+    actualizar. En las rondas con etiqueta se usa el estimador insesgado
+    perdida/rho, el mismo truco de importance sampling de EXP3 (Auer et al.):
+    en esperanza, cada experto recibe la misma actualizacion que con rho = 1.
+
+    El sorteo de que rondas tienen etiqueta usa un generador aparte, para que
+    con rho = 1 la corrida sea identica a la version sin etiqueta parcial.
     """
     cantidad_expertos, cantidad_rondas = perdidas.shape
     generador = np.random.default_rng(semilla)
+    rondas_con_etiqueta = sortear_rondas_con_etiqueta(
+        cantidad_rondas, probabilidad_etiqueta, semilla
+    )
 
     pesos = np.full(cantidad_expertos, 1.0 / cantidad_expertos)
 
@@ -68,10 +98,15 @@ def correr_hedge(perdidas, predicciones, etiquetas, eta, randomizado, semilla=0)
             voto = float(np.dot(pesos, predicciones[:, ronda]))
             prediccion = 1 if voto > 0.5 else 0
 
+        # La perdida del jugador se cuenta siempre, haya etiqueta o no.
         perdidas_jugador[ronda] = 1.0 if prediccion != etiquetas[ronda] else 0.0
 
+        if not rondas_con_etiqueta[ronda]:
+            continue
+        perdidas_estimadas = perdidas[:, ronda] / probabilidad_etiqueta
+
         # Actualizacion multiplicativa de la slide 72, con renormalizacion.
-        pesos = pesos * np.exp(-eta * perdidas[:, ronda])
+        pesos = pesos * np.exp(-eta * perdidas_estimadas)
         pesos = pesos / pesos.sum()
 
     return perdidas_jugador, historial_pesos
@@ -155,3 +190,31 @@ def construir_secuencia_adversaria(cantidad_rondas, eta):
 
     perdidas = (predicciones != etiquetas).astype(float)
     return perdidas, predicciones, etiquetas
+
+
+def eta_etiqueta_parcial(cantidad_rondas, cantidad_expertos, probabilidad_etiqueta):
+    """eta para la variante con etiqueta parcial: el de peor caso escalado por sqrt(rho).
+
+    Con rho = 1 coincide con eta_teorico, asi que el barrido arranca exactamente
+    en la configuracion del experimento principal. Achicar eta con rho compensa
+    que las perdidas estimadas pueden valer hasta 1/rho.
+    """
+    return np.sqrt(probabilidad_etiqueta) * eta_teorico(cantidad_rondas, cantidad_expertos)
+
+
+def cota_etiqueta_parcial(cantidad_rondas, cantidad_expertos, probabilidad_etiqueta, eta):
+    """Cota del regret esperado con etiqueta parcial, para un eta dado.
+
+        E[R_T] <= ln K / eta + eta * T / (2 rho)
+
+    Con rho < 1 las perdidas estimadas ya no estan en [0, 1] (pueden valer
+    1/rho), asi que la cota de la slide 73 no aplica. Esta es la version basada
+    en la varianza del estimador, la misma tecnica de Auer et al. (2002) para
+    EXP3: usa e^{-x} <= 1 - x + x^2/2 y que E[perdida_estimada^2] <= 1/rho.
+
+    Optimizada en eta escala como sqrt(T ln K / rho): de ahi la prediccion de
+    que el regret crece como 1/sqrt(rho). Con rho = 1 es mas floja que
+    sqrt(2 T ln K), porque no aprovecha que las perdidas estan acotadas por 1.
+    """
+    logaritmo = np.log(cantidad_expertos)
+    return logaritmo / eta + eta * cantidad_rondas / (2.0 * probabilidad_etiqueta)
