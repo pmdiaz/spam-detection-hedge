@@ -480,7 +480,7 @@ spam bloqueado) para parametrizar la intensidad de manera interpretable.
 **De dónde sale:** Lowd & Meek, trabajo futuro.
 
 Ellos **agregan** palabras buenas. Nosotros agregamos palabras buenas **y ofuscamos** las malas
-(leetspeak). En su sección final piden justamente eso: *"characterizing other spam attacks (e.g.,
+(duplicación de vocales: `viagra` → `viiagra`). En su sección final piden justamente eso: *"characterizing other spam attacks (e.g.,
 word obfuscation)"*.
 
 **Qué hacemos:** presentar el ataque como *passive good word attack* (con cita) **extendido con
