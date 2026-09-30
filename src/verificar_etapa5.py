@@ -18,7 +18,8 @@ import numpy as np
 
 from adversario import construir_stream_atacado
 from algoritmos import correr_hedge, eta_teorico, matriz_de_perdidas
-from cache_expertos import obtener_expertos, obtener_indice_estatico
+from cache_expertos import obtener_expertos
+from estatico import INDICE_MODELO_ESTATICO
 from metricas import blocked_hams, mcc, spam_caught
 from sgd_online import correr_sgd_online
 
@@ -77,7 +78,7 @@ def promediar(resumenes):
 
 def main():
     warmup, stream, expertos = obtener_expertos(semilla=SEMILLA)
-    indice_estatico = obtener_indice_estatico(semilla=SEMILLA)
+    indice_estatico = INDICE_MODELO_ESTATICO
 
     atacado, indice_inicio = construir_stream_atacado(warmup, stream, semilla=SEMILLA)
     textos = atacado["texto"].tolist()

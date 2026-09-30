@@ -27,8 +27,9 @@ from algoritmos import (
     matriz_de_perdidas,
     regret_acumulado,
 )
-from cache_expertos import obtener_expertos, obtener_indice_estatico
-from sgd_online import correr_sgd_online, elegir_alpha
+from cache_expertos import obtener_expertos
+from estatico import INDICE_MODELO_ESTATICO
+from sgd_online import ALPHA_FIJO, correr_sgd_online
 
 SEMILLA = 0
 CANTIDAD_SEMILLAS_MUESTREO = 20
@@ -37,7 +38,7 @@ VALORES_RHO = [1.0, 0.5, 0.2, 0.05]
 
 def main():
     warmup, stream, expertos = obtener_expertos(semilla=SEMILLA)
-    indice_estatico = obtener_indice_estatico(semilla=SEMILLA)
+    indice_estatico = INDICE_MODELO_ESTATICO
     atacado, indice_inicio = construir_stream_atacado(warmup, stream, semilla=SEMILLA)
 
     etiquetas = atacado["etiqueta"].to_numpy()
@@ -48,7 +49,7 @@ def main():
     indice_mejor = int(np.argmin(perdidas_totales))
     errores_estatico = perdidas[indice_estatico, indice_inicio:].sum()
     techo_sin_aprender = perdidas_totales.mean() - perdidas_totales.min()
-    alpha_sgd = elegir_alpha(warmup)
+    alpha_sgd = ALPHA_FIJO
 
     print(f"Stream atacado: T = {cantidad_rondas}, ataque desde t = {indice_inicio}")
     print(f"Mejor experto fijo en retrospectiva: {expertos[indice_mejor].nombre} "

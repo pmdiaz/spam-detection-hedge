@@ -5,9 +5,11 @@
 **Origen del tema:** `referencias/clase_2_ventas_online.pdf`, slide 79 ("Ideas para el paper"), ítem 3:
 *"Extender el caso de detección de spam a un clasificador que se reentrena online con Hedge,
 y comparar contra un modelo estático."*
-**Estado:** etapas 1-4 implementadas y verificadas. El plan incorpora lo que se aprendió al
-implementarlas (ataque por duplicación de vocal, experto estructural enriquecido, cada cota con su
-η, la construcción sintética). Quedan decisiones menores abiertas (§9).
+**Estado:** etapas 1-7 implementadas y verificadas; el experimento completo con 20 semillas está
+corrido (resultados en §6). Faltan las figuras (etapa 8) y la redacción (etapa 9). El plan incorpora
+lo que se aprendió al implementar: ataque por duplicación de vocal, experto estructural enriquecido,
+cada cota con su η, la construcción sintética, estático fijo en Naive Bayes y α de SGD fijo.
+Quedan decisiones menores abiertas (§9).
 
 ---
 
@@ -38,8 +40,9 @@ sobreviva al ataque — y esa condición es exactamente el límite de la garant�
 
 La condición no es retórica: la medimos. Con la primera versión del experto estructural, que no
 sobrevivía al ataque, Hedge terminaba con 0,995 del peso en el modelo estático dañado y no recuperaba
-nada. Con la versión enriquecida (§4), Hedge comete 117 errores en la mitad atacada contra 193 del
-estático (semilla 0).
+nada. Con la versión enriquecida (§4), Hedge comete 132 ± 10 errores en la mitad atacada contra
+190 ± 31 del estático, y cubre el 47 ± 13% de la brecha entre el estático y reentrenar (20 semillas,
+§6).
 
 ---
 
@@ -132,6 +135,15 @@ Todos ven exactamente la misma secuencia `(x_1,y_1), ..., (x_T,y_T)`.
 
 Separar Hedge de SGD-online es el aporte central: la consigna original compara Hedge contra el
 estático, lo cual mezcla los dos efectos en un solo número.
+
+**Configuración usada en el experimento:**
+
+- **Estático:** Naive Bayes, fijo por diseño (§4).
+- **Hedge:** randomizado, con η sintonizado por T (`η = √(8 ln K / T)`). El determinístico y el η
+  small-loss se corren y se guardan como referencia.
+- **SGD online:** regresión logística por SGD sobre el mismo hashing, arranca entrenado sobre el
+  warm-up, predice primero y actualiza después, learning rate por defecto de scikit-learn y
+  `α = 1e-5` fijo (§4).
 
 ### Actualización de Hedge (slide 72)
 
@@ -264,10 +276,38 @@ regresión logística es plana arriba de C≈100 y el argmax caía en C=3000 por
 distinta de la pérdida 0-1 sin pesos sobre la que definimos el regret, y produciría expertos
 subóptimos para la pérdida que Hedge mide.
 
-**El modelo estático** se elige con el mismo criterio, por validación cruzada anidada sobre el
-warm-up: Naive Bayes (MCC 0,869), seguido de la regresión logística (0,854) y el estructural (0,845).
-El margen sobre el estructural es chico y hay que verificar que se mantenga en todas las semillas
-(§9).
+### Dos decisiones que la validación cruzada no podía tomar
+
+Las dos salieron de la primera corrida con 20 semillas, y las dos se tomaron **fijando el valor por
+diseño** en lugar de elegirlo por CV. En ambos casos se sigue registrando qué habría elegido la CV,
+porque es una observación para la discusión. Los resultados de aquella corrida quedaron en
+`resultados/semillas_v1_estatico_y_alpha_por_cv/`.
+
+**El modelo estático es Naive Bayes, fijo.** La primera versión lo elegía por validación cruzada
+anidada sobre el warm-up. En 20 semillas eligió Naive Bayes en 14 y el estructural en 6, siempre por
+poco margen (en la semilla 0: 0,869 contra 0,845 de MCC). En esas 6 el diseño quedaba incoherente: el
+adversario arma su ataque con los pesos de un filtro bayesiano (§5), así que no atacaba al modelo
+desplegado, y el "estático" resultaba robusto por accidente. La dispersión del estático era ±42
+errores y la fracción de brecha cubierta por Hedge iba de −125% a 210%. Fijarlo en Naive Bayes hace
+que el estático sea siempre el modelo que el spammer ataca, que además es el filtro que estudian
+Lowd & Meek. *Para la discusión:* un practicante que eligiera por CV habría desplegado, por azar, un
+modelo robusto en 6 de cada 20 casos.
+
+**El α de SGD online es 1e-5, fijo.** La primera versión lo elegía como a los expertos (CV sobre el
+warm-up, MCC, regla de un error estándar). Con 20 semillas eso rompía la comparación: la CV eligió
+1e-5 en 11 semillas, y ahí SGD cometió 65-83 errores en la mitad atacada; eligió 1e-4 en 8, y ahí
+cometió 125-153. Las semillas en las que "Hedge le ganaba a reentrenar con todas las etiquetas" eran
+exactamente esas. La causa: la CV mide qué tan bien clasifica el modelo *antes* del ataque, y ahí
+1e-4 y 1e-5 dan casi lo mismo; lo que importa para este competidor es qué tan rápido *se adapta*, y
+eso no se puede ver en un warm-up sin drift. Con α más grande el paso `1/(α(t+t₀))` es diez veces más
+chico y la penalización L2 frena el aprendizaje de los tokens nuevos. La regla del error estándar
+empeora las cosas, porque prefiere justamente el modelo más regularizado: es la regla correcta para
+generalizar y la equivocada para un modelo que tiene que adaptarse. Se fija el valor que eligió la CV
+en la semilla 0, donde se desarrolló el diseño; las otras 19 lo evalúan fuera de muestra. Un SGD mal
+sintonizado favorecería injustamente a Hedge.
+
+*Para la discusión:* es un hallazgo metodológico en sí mismo. Validar un hiperparámetro sobre datos
+sin drift no mide la capacidad de adaptación, que es justamente lo que importa en un modelo online.
 
 **Preprocesamiento** (siguiendo a Almeida et al., §3.1): sin stemming, sin eliminación de stopwords
 y sin reducción de dimensionalidad, porque los mensajes son muy cortos.
@@ -419,8 +459,11 @@ La versión adaptativa por competidor queda como posible corrida secundaria (§9
 ## 6. Mediciones y figuras
 
 - `T = 4460` rondas (tras reservar 20% de warm-up de los 5.574 SMS: 1.114 mensajes).
-- 20 semillas, variando la permutación del stream y el muestreo del Hedge randomizado.
-- Resultados como media con banda de dispersión.
+- **20 semillas de permutación.** Cada una fija un orden distinto del corpus y, con él, un warm-up,
+  un stream, unos expertos entrenados y un ataque distintos.
+- **Semillas de muestreo** dentro de cada permutación, para el azar de Hedge randomizado: 20 en el
+  experimento principal y 5 en el barrido de ρ (100 corridas por valor de ρ en total).
+- Resultados como media ± desvío entre las 20 semillas de permutación.
 
 ### Métricas: no reportar accuracy
 
@@ -434,8 +477,8 @@ el paper del dataset:
 
 **Cuidado al reportar el regret:** hay que decir siempre *quién* fue el mejor experto en
 retrospectiva, no solo el número. Con la primera versión del estructural existía el riesgo de que
-fuera un experto casi trivial; con la enriquecida, en la semilla 0 el mejor experto fijo sobre el
-stream atacado es el estructural (160 errores totales contra 255 de Naive Bayes).
+fuera un experto casi trivial; con la enriquecida, el mejor experto fijo sobre el stream atacado es
+el estructural en las 20 semillas.
 
 ### Figuras y tabla
 
@@ -452,10 +495,67 @@ apenas mejor que Naive Bayes antes del ataque (58 contra 62 errores en la primer
 Hedge llega al ataque con el peso repartido entre los dos (0,42 y 0,34). Cuando el ataque rompe a
 Naive Bayes, la mayor parte del peso ya estaba sobre el experto robusto, y al final del stream tiene
 0,994. No hay migración provocada por el ataque: hay **hedging** literal. El algoritmo tenía la
-apuesta cubierta, y por eso la recuperación es casi instantánea.
+apuesta cubierta, y por eso la recuperación es casi instantánea. (Números de la semilla 0; verificar
+en F2 que el patrón se mantiene en el promedio de las 20.)
 
-Resultado de la semilla 0 en la mitad atacada: Hedge randomizado **117,3 ± 5,1 errores**, estático
-**193**.
+### Resultados con 20 semillas
+
+Salida de `src/agregar_resultados.py`; el resumen completo queda en `resultados/resumen.json`.
+
+**Competidores** (media ± desvío entre semillas):
+
+| Competidor | Errores antes del ataque | Errores mitad atacada | SC atacada | BH atacada |
+|---|---|---|---|---|
+| Estático (Naive Bayes) | 60 ± 9 | 190 ± 31 | 42 ± 11% | 0,70% |
+| Hedge randomizado | 72 ± 5 | 132 ± 10 | 59 ± 3% | 0,41% |
+| Hedge determinístico | 48 ± 8 | 123 ± 11 | 62 ± 4% | 0,29% |
+| SGD online | 50 ± 6 | **73 ± 6** | **83 ± 2%** | 1,07% |
+
+**Pregunta 1 — combinar o reentrenar.** Reentrenar es lo que más recupera, como dicen Lowd & Meek.
+Pero Hedge, sin tocar ningún modelo, cubre el **47 ± 13%** de la brecha entre el estático y
+reentrenar (mediana 44%, rango 23% a 76%). El mecanismo: el SC de Hedge tiene como techo el del mejor
+experto fijo (el estructural, ~60-67%), porque solo puede redistribuir peso; SGD supera ese techo
+porque aprende los tokens nuevos.
+
+*Cuidado:* la semilla 0 daba 59%, en el extremo favorable. En el paper va el 47%.
+
+**El seguro de Hedge tiene un costo visible.** Antes del ataque, Hedge randomizado comete *más*
+errores que el estático (72 contra 60): es el precio de sortear expertos en lugar de seguir al mejor,
+la contracara de su garantía de peor caso. El determinístico no lo paga (48) y es mejor también
+después del ataque. Es el mismo patrón de §3: en secuencias benignas el determinístico gana, y en el
+peor caso no tiene garantía.
+
+**Regret contra las cotas** (stream atacado):
+
+| Configuración | Regret | Su cota | Bajo la cota |
+|---|---|---|---|
+| Randomizado, η de peor caso | 31,2 ± 1,6 | 119,8 | 20/20 |
+| Randomizado, η small-loss (oráculo) | 15,0 ± 1,4 | 25,2 ± 0,7 | 20/20 |
+| Determinístico | −2,6 ± 4,8 | — | — |
+
+**Pregunta 2 — cuánta etiqueta hace falta** (errores en la mitad atacada; Hedge y SGD ven las mismas
+rondas etiquetadas):
+
+| ρ | Hedge | SGD online | Semillas en que gana Hedge | Regret de Hedge | R/R(1) | `1/√ρ` |
+|---|---|---|---|---|---|---|
+| 1 | 132 ± 9 | **73 ± 6** | 0/20 | 31,0 ± 3,3 | 1,00 | 1,00 |
+| 0,5 | 141 ± 10 | **101 ± 6** | 0/20 | 42,3 ± 4,7 | 1,36 | 1,41 |
+| 0,2 | 158 ± 12 | **141 ± 9** | 2/20 | 60,8 ± 6,6 | 1,96 | 2,24 |
+| 0,05 | **188 ± 13** | 210 ± 25 | **16/20** | 93,4 ± 12,3 | 3,01 | 4,47 |
+
+- **El cruce entre combinar y reentrenar está entre ρ = 0,2 y 0,05.** Con etiquetas abundantes
+  reentrenar gana siempre; con 5% de etiquetas combinar gana en 16 de 20 semillas. Para recuperarse,
+  reentrenar tiene que aprender del orden de un peso por token nuevo; Hedge solo aprende K = 5 pesos.
+  Matiza a Lowd & Meek: *"frequent retraining"* requiere etiquetas frecuentes.
+- **El regret de Hedge escala con pendiente −0,37** en log-log (teoría −0,5). Hasta ρ = 0,2 sigue
+  bien la ley `1/√ρ`; la desviación está en ρ = 0,05, donde el regret se acerca al techo de no
+  aprender nunca (pesos uniformes siempre; 162,8 en la semilla 0) y satura por debajo de la ley.
+- **La cota con ρ < 1.** Las pérdidas estimadas valen hasta `1/ρ`, así que la cota de la slide 73 no
+  aplica. Se usa la versión basada en la varianza del estimador, `ln K/η + ηT/(2ρ)`, la misma técnica
+  de Auer et al. para EXP3, con `η = √ρ · η_T`. SGD online no repondera por `1/ρ`: aprende de los
+  ejemplos que tiene, como un filtro real con los reportes de sus usuarios.
+- *Cuidado:* la semilla 0 sugería un empate cerca de ρ = 0,2; con 20 semillas reentrenar todavía gana
+  ahí en 18 de 20.
 
 ---
 
@@ -504,24 +604,31 @@ paper_spam_hedge/src/
   datos.py               # ✓ carga del corpus y split warm-up / stream
   expertos.py            # ✓ los 5 expertos, con selección de hiperparámetros por CV
   metricas.py            # ✓ SC, BH, MCC
-  estatico.py            # ✓ selección del modelo estático por CV anidada
+  estatico.py            # ✓ estático fijo (Naive Bayes); la selección por CV solo se reporta
   adversario.py          # ✓ duplicación de vocal + inyección acotada
   algoritmos.py          # ✓ Hedge det./random., cotas, η, construcción sintética
   cache_expertos.py      # ✓ cache en disco de los expertos entrenados por semilla
-  sgd_online.py          # ✓ competidor que reentrena, con etiqueta parcial
+  sgd_online.py          # ✓ competidor que reentrena, α fijo, con etiqueta parcial
   verificar_etapa{2..6}.py   # ✓ verificaciones de cada etapa
-  experimento.py         # pendiente: todo lo anterior con 20 semillas
+  experimento.py         # ✓ todo lo anterior con 20 semillas, en paralelo y retomable
+  agregar_resultados.py  # ✓ tablas con media ± desvío y resultados/resumen.json
   figuras.py             # pendiente: F1, F2, F3 y la tabla T1
 paper_spam_hedge/paper/
   paper.tex              # pendiente
   referencias.bib        # ✓
 ```
 
-**Costo de cómputo:** la selección de hiperparámetros por CV anidada tarda unos minutos por semilla.
-Como los expertos quedan congelados después del warm-up, se entrenan una vez por semilla y se cachean
-en `resultados/cache/`. A partir de ahí, las predicciones de los expertos sobre el stream son una
-matriz fija de K×T, y correr Hedge con muchas semillas de muestreo o muchos valores de ρ es casi
-gratis.
+**Costo de cómputo:** como los expertos quedan congelados después del warm-up, se entrenan una vez
+por semilla y se cachean en `resultados/cache/`. A partir de ahí, las predicciones de los expertos
+sobre el stream son una matriz fija de K×T, y correr Hedge con muchas semillas de muestreo o muchos
+valores de ρ es casi gratis. Medido: ~100 s por semilla la primera vez (CV anidada incluida), ~18 s
+con el cache. Con 6 procesos en paralelo, las 20 semillas tardan 6,4 minutos sin cache y 1,2 con
+cache. `experimento.py` guarda cada semilla apenas termina, así que si se corta, se retoma.
+
+Por semilla quedan dos archivos en `resultados/semillas/`: `semilla_<s>.json` con los números para
+las tablas, y `semilla_<s>.npz` con las series temporales para las figuras (predicciones del estático
+y de SGD, error medio de Hedge por ronda, pesos medios, curvas de regret y la matriz de pérdidas de
+los expertos).
 
 ### Etapas
 
@@ -533,32 +640,11 @@ gratis.
 | 4 ✓ | Hedge determinístico y randomizado | Sin drift, el regret del randomizado crece sublinealmente y queda bajo **la cota de su propio η**; la construcción sintética da regret lineal al determinístico |
 | 5 ✓ | Estático y SGD online | Corren sobre la misma secuencia (huella del DataFrame atacado) |
 | 6 ✓ | Barrido de ρ, con Hedge y SGD online | El regret de Hedge crece al bajar ρ, de forma compatible con `1/√ρ`; Hedge y SGD ven las mismas rondas etiquetadas |
-
-**Resultados de la semilla 0 en las etapas 5 y 6** (errores en la mitad atacada; el estático comete
-193 en todos los casos):
-
-| ρ | Hedge randomizado | SGD online | Regret de Hedge | R/R(1) | `1/√ρ` |
-|---|---|---|---|---|---|
-| 1 | 117 ± 5 | **65** | 28,8 | 1,00 | 1,00 |
-| 0,5 | 128 ± 6 | **91** ± 8 | 42,6 | 1,48 | 1,41 |
-| 0,2 | 146 ± 12 | 140 ± 12 | 62,0 | 2,16 | 2,24 |
-| 0,05 | **179** ± 19 | 214 ± 23 | 98,2 | 3,42 | 4,47 |
-
-- Con todas las etiquetas, Hedge cubre el 59% de la brecha entre el estático y reentrenar.
-- Con etiquetas escasas la ventaja de reentrenar se achica, hay empate alrededor de ρ = 0,2, y con
-  ρ = 0,05 combinar gana y SGD online termina peor que el estático. Para recuperarse, reentrenar
-  tiene que aprender del orden de un peso por token nuevo; Hedge solo aprende K = 5 pesos. Matiza a
-  Lowd & Meek: *"frequent retraining"* requiere etiquetas frecuentes.
-- Pendiente log-log del regret de Hedge: −0,40 (teoría −0,5). La desviación está en ρ = 0,05: el
-  regret se acerca al techo de no aprender nunca (162,8, pesos uniformes siempre) y satura por
-  debajo de la ley `1/√ρ`.
-- Con ρ < 1 las pérdidas estimadas valen hasta `1/ρ` y la cota de la slide 73 no aplica. Se usa la
-  cota basada en la varianza del estimador, `ln K/η + ηT/(2ρ)`, la misma técnica de Auer et al.
-  para EXP3, con `η = √ρ · η_T`. SGD online no repondera por `1/ρ`: aprende de los ejemplos que
-  tiene, como un filtro real con los reportes de sus usuarios.
-| 7 | 20 semillas y agregación | Bandas de dispersión estables |
+| 7 ✓ | 20 semillas y agregación | Bandas de dispersión estables: SGD ±6, Hedge ±10, regret ±1,6. La primera corrida no las tenía (SGD ±32) y reveló los dos problemas corregidos en §4 |
 | 8 | Las 3 figuras y la tabla | Legibles en blanco y negro, a ancho de columna |
 | 9 | Redacción del `.tex` | Entra en 3 páginas a dos columnas |
+
+Los resultados de las etapas 5 a 7 están en §6.
 
 **Baselines de la etapa 2** (Almeida et al. 2011, Tabla 7, mismo corpus) contra lo medido,
 promediado sobre 5 semillas:
@@ -590,36 +676,38 @@ matplotlib 3.10.9). No hay LaTeX ni pandoc local: el `.tex` se compila en Overle
 
 ---
 
-## 9. Decisiones abiertas
+## 9. Decisiones
 
-Ordenadas por cuánto afectan lo que falta implementar. Cada una lleva una recomendación.
+### Resueltas en las etapas 5 a 7
 
-1. **Qué η usar en el experimento principal.** El sintonizado por `L_best` es mejor, pero requiere
-   conocer `L_best` de antemano, y con drift no se sabe. *Recomendación:* η sintonizado por T en el
-   experimento; el small-loss solo en F3 como referencia de oráculo.
-2. **Qué Hedge va en F1.** *Recomendación:* el randomizado, que es el que tiene garantía. El
-   determinístico se reporta en la tabla.
-3. **Estabilidad del modelo estático entre semillas.** En la semilla 0 la CV elige Naive Bayes por
-   poco margen sobre el estructural (0,869 contra 0,845). Si en alguna semilla elige al estructural,
-   el estático ya sería robusto y esa semilla deja de medir lo que queremos. Opciones: fijar Naive
-   Bayes como estático por diseño ("el filtro bayesiano, que es el que atacan Lowd & Meek"), o
-   mantener la CV y reportar en cuántas semillas cambia. *Recomendación:* verificarlo en la etapa 7
-   antes de decidir.
-4. **Espacio.** F3 ahora tiene dos paneles. La sugerencia del revisor de fusionar F1 y F2 en una
-   figura con el eje temporal compartido vuelve a ser atendible. *Recomendación:* decidir al armar
-   las figuras, con los gráficos a la vista.
-5. **Ablación del experto estructural.** Correr Hedge también con la versión simple del estructural
+- **Qué η usar en el experimento principal:** el sintonizado por T. El small-loss es mejor, pero
+  requiere conocer `L_best` de antemano, y con drift no se sabe; queda como referencia de oráculo en
+  F3.
+- **Qué Hedge va en F1:** el randomizado, que es el que tiene garantía. El determinístico va en la
+  tabla.
+- **El modelo estático:** Naive Bayes, fijo por diseño. La CV habría elegido al estructural en 6 de
+  20 semillas. Detalle en §4.
+- **El α de SGD online:** 1e-5, fijo. La CV lo elegía mal para un modelo que tiene que adaptarse.
+  Detalle en §4.
+
+### Abiertas
+
+Ordenadas por cuánto afectan lo que falta. Cada una lleva una recomendación.
+
+1. **Espacio.** F3 tiene dos paneles. La sugerencia del revisor de fusionar F1 y F2 en una figura
+   con el eje temporal compartido vuelve a ser atendible. *Recomendación:* decidir al armar las
+   figuras, con los gráficos a la vista.
+2. **Ablación del experto estructural.** Correr Hedge también con la versión simple del estructural
    mostraría directamente la condición de la tesis: sin un experto que sobreviva no hay
    recuperación, con él sí. Cuesta poco (una corrida más) y ocupa una línea de tabla.
    *Recomendación:* hacerlo si entra.
-6. **`norm='l2'` en el vectorizador.** Para fidelidad con el `MN TF NB` de Almeida habría que usar
+3. **`norm='l2'` en el vectorizador.** Para fidelidad con el `MN TF NB` de Almeida habría que usar
    conteos crudos (`norm=None`) y volver a elegir α. *Recomendación:* dejarlo como está y declararlo;
    no cambia ninguna conclusión.
-7. **Referencia de Herbster & Warmuth (1998).** Si se menciona Fixed-Share en la discusión hace falta
+4. **Referencia de Herbster & Warmuth (1998).** Si se menciona Fixed-Share en la discusión hace falta
    la cita, que no está en `referencias/`.
-8. **Adversario adaptativo.** Sin cambios respecto de la versión anterior del plan: queda fuera de la
-   corrida y se menciona en la discusión con la degradación teórica a `T^{2/3}` de Cesa-Bianchi,
-   Dekel & Shamir.
+5. **Adversario adaptativo.** Queda fuera de la corrida y se menciona en la discusión con la
+   degradación teórica a `T^{2/3}` de Cesa-Bianchi, Dekel & Shamir.
 
 ---
 
@@ -785,3 +873,26 @@ extendido con ofuscación de las palabras delatoras.
 decisiones. El nombre viene de probar manzanas: si la mordés sabés si estaba buena, pero ya no la
 podés vender; si no la mordés, la vendés pero nunca sabés. En spam: si mandás el mensaje a la
 carpeta de spam, el usuario no lo mira y nunca sabés si te equivocaste.
+
+### Agregados en la etapa 7
+
+**Validación cruzada (CV, *cross-validation*).** Una forma de estimar qué tan bien va a andar un
+modelo con datos que no vio, sin gastar datos aparte. Se parten los datos en 5 pedazos (*folds*), se
+entrena con 4 y se evalúa con el que quedó afuera, y se repite 5 veces rotando cuál queda afuera. El
+promedio estima el desempeño con datos nuevos. En este trabajo se usa siempre **solo sobre el
+warm-up**, nunca sobre el stream. Su límite, que vimos en la etapa 7: responde "¿qué tan bien
+clasifica datos como los del warm-up?", y como en el warm-up no hay ataque, no puede responder
+"¿qué tan rápido se adapta cuando el spammer cambia?".
+
+**Regla de un error estándar.** Criterio para elegir entre valores de un hiperparámetro que dan
+resultados casi iguales en la validación cruzada: en lugar de quedarse con el mejor, se elige el más
+simple (el más regularizado) entre los que están a menos de un error estándar del mejor. Evita
+perseguir diferencias que son ruido. Es la regla correcta para generalizar, y la equivocada para un
+modelo que tiene que adaptarse rápido, porque lo que prefiere —más regularización— es justamente lo
+que frena la adaptación.
+
+**Semilla de permutación y semilla de muestreo.** Las dos fuentes de azar del experimento. La de
+*permutación* decide en qué orden llegan los mensajes, y con eso cambia todo lo demás: qué mensajes
+van al warm-up, cómo quedan entrenados los expertos, qué se ataca. La de *muestreo* decide, dentro de
+una misma permutación, qué experto sortea Hedge randomizado en cada ronda y qué rondas tienen
+etiqueta. Los "± desvío" de las tablas son entre semillas de permutación.
