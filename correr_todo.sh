@@ -129,6 +129,7 @@ etapa 5 "Estatico, Hedge y SGD online sobre la misma secuencia" verificar_etapa5
 etapa 6 "Barrido de rho con Hedge y SGD online"             verificar_etapa6.py
 etapa 7 "Experimento completo con 20 semillas"              experimento.py
 etapa 7 "Agregacion de las 20 semillas"                     agregar_resultados.py
+etapa 7 "Robustez: SGD reponderado por 1/rho"              reponderacion_sgd.py
 etapa 8 "Figuras del paper"                                 figuras.py
 
 echo
