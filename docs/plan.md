@@ -42,8 +42,8 @@ sobreviva al ataque — y esa condición es exactamente el límite de la garant�
 
 La condición no es retórica: la medimos. Con la primera versión del experto estructural, que no
 sobrevivía al ataque, Hedge terminaba con 0,995 del peso en el modelo estático dañado y no recuperaba
-nada. Con la versión enriquecida (§4), Hedge comete 132 ± 10 errores en la mitad atacada contra
-190 ± 31 del estático, y cubre el 47 ± 13% de la brecha entre el estático y reentrenar (20 semillas,
+nada. Con la versión enriquecida (§4), Hedge comete 133 ± 10 errores en la mitad atacada contra
+190 ± 32 del estático, y cubre el 46 ± 13% de la brecha entre el estático y reentrenar (20 semillas,
 §6).
 
 ---
@@ -500,6 +500,14 @@ retrospectiva, no solo el número. Con la primera versión del estructural exist
 fuera un experto casi trivial; con la enriquecida, el mejor experto fijo sobre el stream atacado es
 el estructural en las 20 semillas.
 
+**Reproducibilidad.** Los números de esta sección son exactamente reproducibles con
+`./correr_todo.sh`. Una primera versión no lo era: al elegir los 800 tokens a ofuscar, los 14
+empatados en el corte se desempataban según el orden de un `set` de Python, que cambia en cada
+proceso, así que cada corrida atacaba con una lista apenas distinta. Ahora se desempata por orden
+alfabético. El cambio movió las cifras en el último dígito (por ejemplo, 47 → 46% de la brecha y
+16 → 15 semillas en que gana combinar con ρ = 0,05) y no cambió ninguna conclusión; los resultados
+anteriores quedaron en `resultados/semillas_v2_desempate_aleatorio/`.
+
 ### Figuras del paper
 
 Tres figuras, generadas por `src/figuras.py` a partir de lo que guardó el experimento (no vuelve a
@@ -553,14 +561,14 @@ Salida de `src/agregar_resultados.py`; el resumen completo queda en `resultados/
 
 | Competidor | Errores antes del ataque | Errores mitad atacada | SC atacada | BH atacada |
 |---|---|---|---|---|
-| Estático (Naive Bayes) | 60 ± 9 | 190 ± 31 | 42 ± 11% | 0,70% |
-| Hedge randomizado | 72 ± 5 | 132 ± 10 | 59 ± 3% | 0,41% |
-| Hedge determinístico | 48 ± 8 | 123 ± 11 | 62 ± 4% | 0,29% |
+| Estático (Naive Bayes) | 60 ± 9 | 190 ± 32 | 42 ± 11% | 0,70% |
+| Hedge randomizado | 72 ± 5 | 133 ± 10 | 59 ± 3% | 0,42% |
+| Hedge determinístico | 48 ± 8 | 123 ± 11 | 61 ± 4% | 0,29% |
 | SGD online | 50 ± 6 | **73 ± 6** | **83 ± 2%** | 1,07% |
 
 **Pregunta 1 — combinar o reentrenar.** Reentrenar es lo que más recupera, como dicen Lowd & Meek.
-Pero Hedge, sin tocar ningún modelo, cubre el **47 ± 13%** de la brecha entre el estático y
-reentrenar (mediana 44%, rango 23% a 76%). El mecanismo: el SC de Hedge tiene como techo el del mejor
+Pero Hedge, sin tocar ningún modelo, cubre el **46 ± 13%** de la brecha entre el estático y
+reentrenar (mediana 45%, rango 23% a 76%). El mecanismo: el SC de Hedge tiene como techo el del mejor
 experto fijo (el estructural, ~60-67%), porque solo puede redistribuir peso; SGD supera ese techo
 porque aprende los tokens nuevos.
 
@@ -576,9 +584,9 @@ peor caso no tiene garantía.
 
 | Configuración | Regret | Su cota | Bajo la cota |
 |---|---|---|---|
-| Randomizado, η de peor caso | 31,2 ± 1,6 | 59,9 (119,8 con la constante de la slide) | 20/20 |
-| Randomizado, η small-loss (oráculo) | 15,0 ± 1,4 | 25,2 ± 0,7 | 20/20 |
-| Determinístico | −2,6 ± 4,8 | — | — |
+| Randomizado, η de peor caso | 31,2 ± 1,5 | 59,9 (119,8 con la constante de la slide) | 20/20 |
+| Randomizado, η small-loss (oráculo) | 15,1 ± 1,4 | 25,2 ± 0,7 | 20/20 |
+| Determinístico | −2,6 ± 4,9 | — | — |
 
 Sobre la cota de peor caso, ver la nota de §2: el paper usa `√(T ln K / 2)` = 59,9.
 
@@ -587,13 +595,13 @@ rondas etiquetadas):
 
 | ρ | Hedge | SGD online | Semillas en que gana Hedge | Regret de Hedge | R/R(1) | `1/√ρ` |
 |---|---|---|---|---|---|---|
-| 1 | 132 ± 9 | **73 ± 6** | 0/20 | 31,0 ± 3,3 | 1,00 | 1,00 |
-| 0,5 | 141 ± 10 | **101 ± 6** | 0/20 | 42,3 ± 4,7 | 1,36 | 1,41 |
-| 0,2 | 158 ± 12 | **141 ± 9** | 2/20 | 60,8 ± 6,6 | 1,96 | 2,24 |
-| 0,05 | **188 ± 13** | 210 ± 25 | **16/20** | 93,4 ± 12,3 | 3,01 | 4,47 |
+| 1 | 133 ± 10 | **73 ± 6** | 0/20 | 30,9 ± 3,2 | 1,00 | 1,00 |
+| 0,5 | 142 ± 11 | **100 ± 6** | 0/20 | 42,3 ± 4,7 | 1,37 | 1,41 |
+| 0,2 | 157 ± 12 | **141 ± 9** | 2/20 | 60,1 ± 6,3 | 1,94 | 2,24 |
+| 0,05 | **189 ± 13** | 210 ± 25 | **15/20** | 93,2 ± 12,3 | 3,01 | 4,47 |
 
 - **El cruce entre combinar y reentrenar está entre ρ = 0,2 y 0,05.** Con etiquetas abundantes
-  reentrenar gana siempre; con 5% de etiquetas combinar gana en 16 de 20 semillas. Para recuperarse,
+  reentrenar gana siempre; con 5% de etiquetas combinar gana en 15 de 20 semillas. Para recuperarse,
   reentrenar tiene que aprender del orden de un peso por token nuevo; Hedge solo aprende K = 5 pesos.
   Matiza a Lowd & Meek: *"frequent retraining"* requiere etiquetas frecuentes.
 - **El regret de Hedge escala con pendiente −0,37** en log-log (teoría −0,5). Hasta ρ = 0,2 sigue

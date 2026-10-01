@@ -104,8 +104,10 @@ def guardar(figura, nombre):
     con subplots_adjust y deja lugar para las etiquetas directas.
     """
     DIRECTORIO_FIGURAS.mkdir(exist_ok=True)
-    for extension in ["pdf", "png"]:
-        figura.savefig(DIRECTORIO_FIGURAS / f"{nombre}.{extension}")
+    # Sin fecha de creacion en el PDF: asi, volver a generar una figura identica
+    # da un archivo identico, y git no la marca como modificada.
+    figura.savefig(DIRECTORIO_FIGURAS / f"{nombre}.pdf", metadata={"CreationDate": None})
+    figura.savefig(DIRECTORIO_FIGURAS / f"{nombre}.png")
     plt.close(figura)
     print(f"  figuras/{nombre}.pdf y .png")
 

@@ -16,8 +16,10 @@ son muy cortos.
 """
 
 import re
+import warnings
 
 import numpy as np
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import make_scorer, matthews_corrcoef
@@ -69,9 +71,14 @@ def seleccionar_por_cv(construir_modelo, grilla, matriz, etiquetas):
     promedios = []
     errores_estandar = []
     for valor in grilla:
-        puntajes = cross_val_score(
-            construir_modelo(valor), matriz, etiquetas, cv=validacion, scoring=scorer
-        )
+        # Algunos valores de la grilla (los menos regularizados) no convergen y
+        # scikit-learn avisa con un ConvergenceWarning. Son justamente valores
+        # que esta seleccion evalua para descartarlos, asi que el aviso es ruido.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ConvergenceWarning)
+            puntajes = cross_val_score(
+                construir_modelo(valor), matriz, etiquetas, cv=validacion, scoring=scorer
+            )
         promedios.append(puntajes.mean())
         errores_estandar.append(puntajes.std() / np.sqrt(len(puntajes)))
 

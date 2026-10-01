@@ -36,8 +36,8 @@ remedios que la formulación usual mezcla: \emph{combinar} clasificadores fijos 
 reacomodan (\emph{Hedge}) o \emph{reentrenar} un único modelo con los datos que llegan. Los separamos
 sobre el SMS Spam Collection con un ataque de ofuscación léxica que reduce a la mitad la detección
 de un filtro bayesiano. Con todas las etiquetas, reentrenar recupera más, pero \emph{Hedge} cubre el
-$47 \pm 13\,\%$ de la brecha sin tocar ningún modelo. Cuando las etiquetas escasean el orden se
-invierte: con 5\,\% de mensajes etiquetados, combinar gana en 16 de 20 semillas. De paso mostramos
+$46 \pm 13\,\%$ de la brecha sin tocar ningún modelo. Cuando las etiquetas escasean el orden se
+invierte: con 5\,\% de mensajes etiquetados, combinar gana en 15 de 20 semillas. De paso mostramos
 que la cota de la teórica corresponde al \emph{Hedge} randomizado y no al voto pesado
 determinístico, que admite regret lineal, y que cada cota vale solo para su propia tasa de
 aprendizaje.
@@ -181,9 +181,9 @@ Blocked Hams (BH) y MCC: con 13,4\,\% de spam, no marcar nada da 87\,\% de acier
 \cmidrule(lr){2-3}\cmidrule(lr){4-6}
 Competidor & antes & atacada & SC (\%) & BH (\%) & MCC \\
 \midrule
-Estático (NB)         & $60 \pm 9$ & $190 \pm 31$ & $42 \pm 11$ & 0,70 & $0,58$ \\
-\emph{Hedge} random.  & $72 \pm 5$ & $132 \pm 10$ & $59 \pm 3$  & 0,41 & $0,73$ \\
-\emph{Hedge} determ.  & $48 \pm 8$ & $123 \pm 11$ & $62 \pm 4$  & 0,29 & $0,75$ \\
+Estático (NB)         & $60 \pm 9$ & $190 \pm 32$ & $42 \pm 11$ & 0,70 & $0,58$ \\
+\emph{Hedge} random.  & $72 \pm 5$ & $133 \pm 10$ & $59 \pm 3$  & 0,42 & $0,72$ \\
+\emph{Hedge} determ.  & $48 \pm 8$ & $123 \pm 11$ & $61 \pm 4$  & 0,29 & $0,75$ \\
 SGD online            & $50 \pm 6$ & $\mathbf{73 \pm 6}$ & $\mathbf{83 \pm 2}$ & 1,07 & $\mathbf{0,86}$ \\
 \bottomrule
 \end{tabular}
@@ -201,9 +201,9 @@ léxicos'' agrupa regresión logística, árbol y reglas. Promedio de 20 semilla
 
 \paragraph{Combinar o reentrenar.} El ataque lleva al estático de 85 a 42\,\% de spam atrapado y
 destroza a los otros expertos léxicos (regresión logística 7\,\%, árbol 22\,\%, reglas 15\,\%); el
-estructural pasa de 81 a 66\,\%. Reentrenar es lo que más recupera (Tabla~\ref{tab:competidores}),
+estructural pasa de 81 a 65\,\%. Reentrenar es lo que más recupera (Tabla~\ref{tab:competidores}),
 como anticipan \citet{lowd2005goodword}. Pero \emph{Hedge}, sin tocar ningún modelo, cubre el
-$47 \pm 13\,\%$ de la brecha entre el estático y SGD online (mediana 44\,\%, rango 23--76\,\%). La
+$46 \pm 13\,\%$ de la brecha entre el estático y SGD online (mediana 45\,\%, rango 23--76\,\%). La
 Fig.~\ref{fig:pesos} muestra el mecanismo en dos partes. Al llegar el ataque el peso está repartido
 en tercios (Naive Bayes 0,36, estructural 0,33, otros 0,31): \emph{Hedge} no apostó todo al mejor
 del momento. Después, el estructural tarda unas 1.000 rondas en concentrar el peso, y el spam
@@ -220,13 +220,13 @@ el tiempo (media de 20 semillas). B: adversario que simula al jugador determiní
 \label{fig:regret}
 \end{figure}
 
-\paragraph{Garantías.} Con $\etaT$ el regret es $31,2 \pm 1,6$, bajo la cota~\eqref{eq:peorcaso} de
-$59,9$ en las 20 semillas; con $\etaL$ baja a $15,0 \pm 1,4$, bajo su cota de $25,2$ en las 20. La
+\paragraph{Garantías.} Con $\etaT$ el regret es $31,2 \pm 1,5$, bajo la cota~\eqref{eq:peorcaso} de
+$59,9$ en las 20 semillas; con $\etaL$ baja a $15,1 \pm 1,4$, bajo su cota de $25,2$ en las 20. La
 Fig.~\ref{fig:regret}A muestra la diferencia de forma: la cota de peor caso es una recta, mientras
 que la de \citet{freund1997decision} aumenta su pendiente con el ataque, porque sigue la pérdida
 acumulada del mejor experto. El análisis \emph{small-loss} no solo acota mejor: prescribe un
 algoritmo mejor, al costo de una sintonía de oráculo. El voto determinístico, en cambio, tiene
-regret $-2,6 \pm 4,8$ en el \emph{stream}: sobre una secuencia benigna le gana al mejor experto,
+regret $-2,6 \pm 4,9$ en el \emph{stream}: sobre una secuencia benigna le gana al mejor experto,
 como cualquier ensamble, aunque en el peor caso no tiene garantía alguna (Fig.~\ref{fig:regret}B).
 
 \begin{figure}[t]
@@ -237,9 +237,9 @@ entre 20 semillas; \emph{Hedge} y SGD ven las mismas rondas etiquetadas.}
 \label{fig:rho}
 \end{figure}
 
-\paragraph{Etiqueta escasa.} Al bajar $\rho$, \emph{Hedge} se degrada de 132 a 188 errores y SGD de
+\paragraph{Etiqueta escasa.} Al bajar $\rho$, \emph{Hedge} se degrada de 133 a 189 errores y SGD de
 73 a 210 (Fig.~\ref{fig:rho}). Con $\rho \ge 0,2$ reentrenar gana en 18 o más de las 20 semillas;
-con $\rho = 0,05$ combinar gana en 16, y SGD termina peor que no adaptarse (210 contra 190 del
+con $\rho = 0,05$ combinar gana en 15, y SGD termina peor que no adaptarse (210 contra 190 del
 estático). La explicación es de conteo: para recuperarse, reentrenar tiene que aprender del orden de
 un peso por token nuevo, mientras que \emph{Hedge} aprende $K = 5$. El regret de \emph{Hedge} escala
 con pendiente $-0,37$ en escala log-log, contra $-0,5$ de la teoría; hasta $\rho = 0,2$ sigue bien

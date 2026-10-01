@@ -75,8 +75,19 @@ def calcular_pesos_tokens(textos, etiquetas, suavizado=1.0):
 
 
 def tokens_mas_delatores(pesos, cantidad):
-    """Los tokens con mayor peso hacia spam: los que el ataque va a ofuscar."""
-    ordenados = sorted(pesos.items(), key=lambda par: par[1], reverse=True)
+    """Los tokens con mayor peso hacia spam: los que el ataque va a ofuscar.
+
+    Los empates se desempatan por orden alfabetico. Hay muchos: todos los
+    tokens que aparecen la misma cantidad de veces en spam y nunca en ham tienen
+    exactamente el mismo peso, y en el corte de 800 quedaban 14 empatados. Sin
+    desempate explicito, cuales entraban dependia del orden de un set de Python,
+    que cambia en cada proceso: el ataque no era reproducible entre corridas.
+    """
+    def clave_de_orden(par):
+        token, peso = par
+        return (-peso, token)
+
+    ordenados = sorted(pesos.items(), key=clave_de_orden)
     return [token for token, _ in ordenados[:cantidad]]
 
 
