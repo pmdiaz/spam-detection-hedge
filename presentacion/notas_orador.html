@@ -1,0 +1,571 @@
+<meta charset="utf-8">
+<title>Guion de Combinar o reentrenar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: una columna de tarjetas por diapositiva; cada tarjeta se parte en
+   espacio de trabajo (guion, izquierda) y apoyo (datos y referencias, derecha). */
+:root {
+  --bg: #F3F4F6; --card: #FFFFFF; --ink: #1E2430; --ink-2: #535C6C; --muted: #858D9C;
+  --line: #E1E4EA; --soft: #F0F2F5;
+  --a: #2A64B0; --a-tint: #E5EEF9; --b: #5747AD; --b-tint: #ECE9F8;
+  --estatico: #D9602F; --hedge: #2A78D6; --sgd: #159A6B; --estructural: #4A3AA7;
+  --sans: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171D; --card: #1C2028; --ink: #E6E9EF; --ink-2: #AFB6C3; --muted: #7E8696;
+    --line: #2B303A; --soft: #222731;
+    --a: #8DB7EE; --a-tint: #1D2B3F; --b: #ADA3F1; --b-tint: #29253F;
+    --estatico: #EE8A60; --hedge: #6FA6EA; --sgd: #3CC594; --estructural: #9C91EC;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171D; --card: #1C2028; --ink: #E6E9EF; --ink-2: #AFB6C3; --muted: #7E8696;
+  --line: #2B303A; --soft: #222731;
+  --a: #8DB7EE; --a-tint: #1D2B3F; --b: #ADA3F1; --b-tint: #29253F;
+  --estatico: #EE8A60; --hedge: #6FA6EA; --sgd: #3CC594; --estructural: #9C91EC;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+.pagina { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 64px; display: grid; gap: 28px; }
+
+.cabecera { display: grid; gap: 18px; }
+.sobre { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 38px); line-height: 1.15; margin: 0; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.resumen div { background: var(--card); padding: 12px 16px; }
+.resumen dt { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.resumen dd { margin: 2px 0 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.linea { display: grid; gap: 8px; }
+.linea-barra { display: flex; gap: 2px; height: 34px; border-radius: 8px; overflow: hidden; }
+.seg { display: flex; align-items: center; justify-content: center; font: 500 12px var(--mono); text-decoration: none; min-width: 0; }
+.seg-a { background: var(--a-tint); color: var(--a); }
+.seg-b { background: var(--b-tint); color: var(--b); }
+.seg:hover, .seg:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+.linea-leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+
+.controles { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; position: sticky; top: env(safe-area-inset-top, 0px);
+  z-index: 2; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); }
+.filtro { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+.filtro button { font: 500 13px var(--sans); color: var(--ink-2); background: none; border: 0; padding: 7px 14px; cursor: pointer; }
+.filtro button + button { border-left: 1px solid var(--line); }
+.filtro button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+.filtro button:focus-visible { outline: 2px solid var(--hedge); outline-offset: -2px; }
+.colores { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--ink-2); }
+.colores span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--c); }
+.progreso { margin-left: auto; font: 500 13px var(--mono); color: var(--muted); }
+
+.seccion { display: flex; align-items: baseline; gap: 12px; margin: 14px 0 0; font-size: 13px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.seccion span { font-family: var(--mono); color: var(--ink-2); }
+
+.diapo { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.diapo-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.num { font: 500 13px var(--mono); color: var(--muted); }
+.diapo-cab h3 { margin: 0; font-size: 17px; font-weight: 600; flex: 1 1 260px; min-width: 0; text-wrap: balance; }
+.chip { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.chip-a { background: var(--a-tint); color: var(--a); }
+.chip-b { background: var(--b-tint); color: var(--b); }
+.tiempo { font: 400 13px var(--mono); color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tiempo b { font-weight: 500; color: var(--ink); }
+.ensayo { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.ensayo input { accent-color: var(--hedge); width: 16px; height: 16px; }
+.diapo.hecha .diapo-cab { background: var(--soft); }
+
+.diapo-cuerpo { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); }
+.trabajo { padding: 18px 22px 20px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.apoyo { padding: 18px 22px 20px; background: var(--soft); border-left: 1px solid var(--line); display: grid; gap: 10px; align-content: start; min-width: 0; }
+.mensaje { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.4; max-width: 62ch; }
+.guion { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink); max-width: 66ch; }
+.guion li::marker { color: var(--muted); }
+.pase { margin: 4px 0 0; font-style: italic; color: var(--ink-2); display: flex; gap: 10px; align-items: baseline; }
+.etq { font: 600 11px var(--sans); font-style: normal; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.apoyo h4 { margin: 6px 0 0; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.apoyo h4:first-child { margin-top: 0; }
+.datos { margin: 0; display: grid; gap: 6px; }
+.dato dt { font-size: 12px; color: var(--ink-2); }
+.dato dd { margin: 0; font: 500 13px/1.45 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.refs { margin: 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); display: grid; gap: 3px; }
+.qa { display: grid; gap: 2px; }
+.qa .q { margin: 0; font-size: 13px; font-weight: 600; }
+.qa .a { margin: 0; font-size: 13px; color: var(--ink-2); }
+
+.final { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; }
+.caja { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; display: grid; gap: 12px; align-content: start; }
+.caja h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.caja .qa .q { font-size: 14px; }
+.caja .qa .a { font-size: 14px; }
+.biblio { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.checklist { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
+
+@media (max-width: 760px) {
+  .diapo-cuerpo, .final { grid-template-columns: minmax(0, 1fr); }
+  .apoyo { border-left: 0; border-top: 1px solid var(--line); }
+  .progreso { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media print {
+  .controles, .ensayo { display: none; }
+  .diapo { break-inside: avoid; }
+  body { background: #FFFFFF; }
+}
+</style>
+
+<main class="pagina">
+  <header class="cabecera">
+    <p class="sobre">Notas del orador · Tópicos Avanzados en Ciencia de Datos · UdeSA</p>
+    <h1>Combinar o reentrenar: guion de la charla</h1>
+    <dl class="resumen">
+      <div><dt>Duración</dt><dd>20:00</dd></div>
+      <div><dt>Guion</dt><dd>19:30</dd></div>
+      <div><dt>Orador A · 1–12</dt><dd>10:30</dd></div>
+      <div><dt>Orador B · 13–20</dt><dd>9:00</dd></div>
+      <div><dt>Margen</dt><dd>0:30</dd></div>
+    </dl>
+    <div class="linea">
+      <div class="linea-barra" role="navigation" aria-label="Diapositivas, con ancho proporcional a su tiempo"><a class='seg seg-a' href='#d1' style='flex:30' title='1. Combinar o reentrenar (0:30)'>1</a><a class='seg seg-a' href='#d2' style='flex:75' title='2. Un spammer que aprende a esquivar el filtro (1:15)'>2</a><a class='seg seg-a' href='#d3' style='flex:60' title='3. Dos formas de defenderse (1:00)'>3</a><a class='seg seg-a' href='#d4' style='flex:40' title='4. Dos preguntas (0:40)'>4</a><a class='seg seg-a' href='#d5' style='flex:80' title='5. Cómo lo medimos (1:20)'>5</a><a class='seg seg-a' href='#d6' style='flex:75' title='6. Hedge en un minuto (1:15)'>6</a><a class='seg seg-a' href='#d7' style='flex:60' title='7. Combinar recupera casi la mitad, sin reentrenar (1:00)'>7</a><a class='seg seg-a' href='#d8' style='flex:45' title='8. De 305 spams atacados, Hedge atrapa 52 más (0:45)'>8</a><a class='seg seg-a' href='#d9' style='flex:30' title='9. Con el ataque, el estático cae y no se recupera (0:30)'>9</a><a class='seg seg-a' href='#d10' style='flex:30' title='10. Hedge cae con él, pero se recupera a medias (0:30)'>10</a><a class='seg seg-a' href='#d11' style='flex:30' title='11. Reentrenar aprende las palabras nuevas (0:30)'>11</a><a class='seg seg-a' href='#d12' style='flex:75' title='12. Por qué funciona: la apuesta ya estaba cubierta (1:15)'>12</a><a class='seg seg-b' href='#d13' style='flex:90' title='13. Con pocas etiquetas, combinar le gana a reentrenar (1:30)'>13</a><a class='seg seg-b' href='#d14' style='flex:75' title='14. No es un artefacto de cómo se pondera (1:15)'>14</a><a class='seg seg-b' href='#d15' style='flex:90' title='15. La cota de la teoría no es la del voto pesado (1:30)'>15</a><a class='seg seg-b' href='#d16' style='flex:75' title='16. Cada cota vale para su tasa de aprendizaje (1:15)'>16</a><a class='seg seg-b' href='#d17' style='flex:90' title='17. Tres cosas que sirven fuera de este trabajo (1:30)'>17</a><a class='seg seg-b' href='#d18' style='flex:60' title='18. Cuándo combinar y cuándo reentrenar (1:00)'>18</a><a class='seg seg-b' href='#d19' style='flex:45' title='19. Lo que este trabajo no muestra (0:45)'>19</a><a class='seg seg-b' href='#d20' style='flex:15' title='20. ¿Preguntas? (0:15)'>20</a></div>
+      <div class="linea-leyenda"><span>Cada bloque es una diapositiva; su ancho es su tiempo. Tocá un bloque para ir a la tarjeta.</span></div>
+    </div>
+  </header>
+
+  <div class="controles">
+    <div class="filtro" role="group" aria-label="Filtrar por orador">
+      <button type="button" id="filtro-todos" data-filtro="todos" aria-pressed="true">Todas</button>
+      <button type="button" id="filtro-a" data-filtro="A" aria-pressed="false">Orador A</button>
+      <button type="button" id="filtro-b" data-filtro="B" aria-pressed="false">Orador B</button>
+    </div>
+    <div class="colores" aria-label="Colores de las diapositivas">
+      <span style="--c: var(--estatico)">Estático</span><span style="--c: var(--hedge)">Hedge</span>
+      <span style="--c: var(--sgd)">SGD online</span><span style="--c: var(--estructural)">Estructural</span>
+    </div>
+    <span class="progreso" id="progreso">0 de 20 ensayadas</span>
+  </div>
+
+  <h2 class='seccion'><span>1</span>El problema</h2>
+<article class="diapo" data-orador="A" id="d1">
+  <header class="diapo-cab">
+    <span class="num">01</span>
+    <h3>Combinar o reentrenar</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>0:30</b> · 0:00–0:30</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-1" data-n="1"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Un filtro de spam pelea contra alguien que aprende. Comparamos dos formas de defenderse.</p>
+      <ul class="guion"><li>Presentarnos: nombres y materia.</li><li>Una frase de entrada: «Cuando el spammer se adapta al filtro, ¿conviene combinar modelos que ya tenemos o reentrenar uno?».</li><li>Las palabras de la derecha son reales: así queda un spam después de nuestro ataque.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Empecemos por el problema.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Duración total</dt><dd>20 min, 20 diapositivas</dd></div><div class='dato'><dt>Orador A</dt><dd>diapositivas 1 a 12</dd></div><div class='dato'><dt>Orador B</dt><dd>diapositivas 13 a 20</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper y código: github.com/pmdiaz/spam-detection-hedge</li></ul></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d2">
+  <header class="diapo-cab">
+    <span class="num">02</span>
+    <h3>Un spammer que aprende a esquivar el filtro</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>1:15</b> · 0:30–1:45</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-2" data-n="2"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Con cambios mínimos, el spammer reduce a la mitad lo que atrapa el filtro.</p>
+      <ul class="guion"><li>Leer el SMS del primer teléfono. Después señalar en el segundo las palabras en naranja: <em>reply → reeply</em>, <em>win → wiin</em>, <em>stop → stoop</em>.</li><li>La palabra en azul, «lol», es la palabra legítima que se agrega.</li><li>Aclarar que es un mensaje real del corpus, atacado por nuestro propio código.</li><li>Señalar las cifras: el filtro estático pasa de atrapar el 85% del spam a atrapar el 42%.</li><li>Remarcar: el mensaje crece una sola palabra. En SMS, agregar decenas de palabras lo delataría por el largo.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«¿Cómo se defiende un filtro de esto? Hay dos caminos.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Spam atrapado por el estático</dt><dd>85 ± 4% sin ataque → 42 ± 11% con ataque</dd></div><div class='dato'><dt>Ataque</dt><dd>800 palabras más delatoras + 1 legítima</dd></div><div class='dato'><dt>Restricción</dt><dd>la mediana del largo no crece más de 20%</dd></div><div class='dato'><dt>Números</dt><dd>sin vocal duplican el último carácter: £100 → £1000</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Lowd & Meek (2005), good word attack</li><li>Almeida et al. (2011), SMS Spam Collection</li><li>Paper §4, «Ataque»</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>¿Por qué duplicar vocales y no usar leetspeak?</p><p class='a'>El leetspeak agrega dígitos, y eso favorecía por casualidad al experto que mira el formato. Duplicar vocales es un ataque puramente léxico.</p></div></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d3">
+  <header class="diapo-cab">
+    <span class="num">03</span>
+    <h3>Dos formas de defenderse</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>1:00</b> · 1:45–2:45</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-3" data-n="3"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Combinar no toca los modelos; reentrenar sí.</p>
+      <ul class="guion"><li>Combinar: cinco clasificadores entrenados una vez y congelados (los cinco círculos). Hedge solo decide a cuál creerle.</li><li>Reentrenar: un único modelo que aprende de cada mensaje etiquetado. La grilla de puntitos verdes representa sus pesos: uno por palabra.</li><li>Leer la cita: Lowd y Meek concluyen que lo único que funciona es reentrenar seguido. Esa es la tesis que ponemos a prueba.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«De ahí salen nuestras dos preguntas.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Expertos</dt><dd>Naive Bayes, logística, árbol, reglas, estructural</dd></div><div class='dato'><dt>Estructural</dt><dd>9 rasgos de formato, no mira palabras</dd></div><div class='dato'><dt>SGD online</dt><dd>regresión logística, hashing 2¹⁸, α = 10⁻⁵</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Freund & Schapire (1997), Hedge</li><li>Lowd & Meek (2005)</li><li>Paper §3.2</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>¿Por qué esos cinco expertos?</p><p class='a'>Por diversidad: cuatro miran palabras y uno mira formato. Esa diversidad es lo que Hedge aprovecha cuando el ataque rompe a los léxicos.</p></div></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d4">
+  <header class="diapo-cab">
+    <span class="num">04</span>
+    <h3>Dos preguntas</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>0:40</b> · 2:45–3:25</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-4" data-n="4"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Las dos preguntas ordenan toda la charla.</p>
+      <ul class="guion"><li>Leer las dos preguntas. Los hallazgos 1 y 2 las responden, en ese orden.</li><li>Anticipar que el hallazgo 3 son dos precisiones sobre la teoría de la materia, y el 4 lecciones de método.</li><li>Mostrar los cuatro círculos de arriba a la derecha: marcan en qué hallazgo estamos durante toda la charla.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Para responderlas armamos este experimento.»</p>
+    </div>
+    <aside class="apoyo"><h4>Referencias</h4><ul class='refs'><li>Paper §1</li></ul></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d5">
+  <header class="diapo-cab">
+    <span class="num">05</span>
+    <h3>Cómo lo medimos</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>1:20</b> · 3:25–4:45</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-5" data-n="5"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Los tres competidores ven exactamente la misma secuencia de mensajes.</p>
+      <ul class="guion"><li>Recorrer la barra de izquierda a derecha: está a escala del corpus.</li><li>Warm-up para entrenar; después, en cada ronda se predice, se ve la etiqueta y recién ahí se actualiza.</li><li>El tramo oscuro es la mitad atacada: ahí se mide quién se recupera.</li><li>Métricas: con 13% de spam, un filtro que no marca nada acierta el 87%. Por eso medimos spam atrapado y legítimo bloqueado por separado.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Antes de los resultados, un minuto sobre cómo decide Hedge.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Corpus</dt><dd>5.574 SMS, 747 spam (13,4%)</dd></div><div class='dato'><dt>Warm-up</dt><dd>1.114 mensajes</dd></div><div class='dato'><dt>Stream</dt><dd>T = 4.460 rondas</dd></div><div class='dato'><dt>Spam atacado</dt><dd>≈ 305 por semilla</dd></div><div class='dato'><dt>No marcar nada</dt><dd>86,95% de acierto</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Almeida et al. (2011), Tabla 7</li><li>Paper §4</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>¿Por qué 20 semillas?</p><p class='a'>Cada semilla cambia el orden de los mensajes, el warm-up y el ataque. Con ≈ 305 spams atacados por semilla, una sola corrida varía mucho.</p></div></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d6">
+  <header class="diapo-cab">
+    <span class="num">06</span>
+    <h3>Hedge en un minuto</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>1:15</b> · 4:45–6:00</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-6" data-n="6"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Hedge no elige un modelo: reparte la confianza y la mueve hacia el que acierta.</p>
+      <ul class="guion"><li>La regla es una sola línea: cada error multiplica el peso del experto por e<sup>−η</sup>.</li><li>En cada mensaje se sortea un experto según los pesos.</li><li>Presentar a los cinco expertos con sus colores; el violeta, el estructural, va a ser protagonista.</li><li>Regret: errores de más contra el mejor experto fijo. La garantía es que crece como √T.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«¿Cuánto rinde esto contra el ataque?»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>η de peor caso</dt><dd>√(8 ln K / T) = 0,054</dd></div><div class='dato'><dt>Peso inicial</dt><dd>1/5 cada experto</dd></div><div class='dato'><dt>Rasgos del estructural</dt><dd>largo, dígitos, mayúsculas, links, «!», teléfonos, moneda, tarifas, palabras en mayúscula</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Freund & Schapire (1997)</li><li>Clase 2, slides 71 a 73</li><li>Paper §2</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>¿Por qué sortear un experto en vez de votar?</p><p class='a'>Lo responde el hallazgo 3: la garantía vale para la versión que sortea.</p></div></aside>
+  </div>
+</article><h2 class='seccion'><span>2</span>Hallazgos</h2>
+<article class="diapo" data-orador="A" id="d7">
+  <header class="diapo-cab">
+    <span class="num">07</span>
+    <h3>Combinar recupera casi la mitad, sin reentrenar</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>1:00</b> · 6:00–7:00</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-7" data-n="7"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Hedge cubre el 46% de la brecha sin tocar ningún modelo.</p>
+      <ul class="guion"><li>Leer la recta de izquierda a derecha: el estático comete 190 errores en la mitad atacada, Hedge 133 y SGD online 73.</li><li>El tramo azul es lo que Hedge recupera: el 46% de la distancia entre no adaptarse y reentrenar, solo cambiando a quién le cree.</li><li>Reentrenar sigue ganando cuando hay etiquetas, como dicen Lowd y Meek. Pero combinar hace casi la mitad del trabajo.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«¿Qué significa eso en mensajes?»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Errores sin ataque</dt><dd>estático 60 · Hedge 72 · determ. 48 · SGD 50</dd></div><div class='dato'><dt>Errores con ataque</dt><dd>190 ± 32 · 133 ± 10 · 123 ± 11 · 73 ± 6</dd></div><div class='dato'><dt>Brecha cubierta</dt><dd>46 ± 13% (mediana 45%, de 23% a 76%)</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper Tabla 1</li><li>Paper §5, «Combinar o reentrenar»</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>Con las medias de la tabla da 49%, ¿por qué dicen 46%?</p><p class='a'>El 46% es el promedio de la fracción calculada en cada semilla. Las dos cuentas son válidas; reportamos la de por semilla.</p></div><div class='qa'><p class='q'>¿Por qué Hedge comete más errores que el estático antes del ataque?</p><p class='a'>Es el precio del seguro: sortear expertos en vez de seguir siempre al mejor. El voto determinístico no paga ese precio.</p></div></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d8">
+  <header class="diapo-cab">
+    <span class="num">08</span>
+    <h3>De 305 spams atacados, Hedge atrapa 52 más</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>0:45</b> · 7:00–7:45</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-8" data-n="8"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">La misma comparación, contada en mensajes concretos.</p>
+      <ul class="guion"><li>Cada punto es un spam que llegó atacado; en color, los que el filtro detecta.</li><li>El estático atrapa 128 de 305; Hedge, 180; SGD, 252.</li><li>Hedge atrapa 52 más que el estático; SGD, 72 más que Hedge.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Veamos cómo pasa esto a lo largo del tiempo.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Spam atrapado, mitad atacada</dt><dd>42 ± 11% · 59 ± 3% · 83 ± 2%</dd></div><div class='dato'><dt>Spams atacados</dt><dd>≈ 305 por semilla</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper Tabla 1</li></ul></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d9">
+  <header class="diapo-cab">
+    <span class="num">09</span>
+    <h3>Con el ataque, el estático cae y no se recupera</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>0:30</b> · 7:45–8:15</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-9" data-n="9"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Primer paso de la figura: el modelo que no se adapta.</p>
+      <ul class="guion"><li>Explicar los ejes: spam atrapado en una ventana móvil de 300 mensajes; la zona sombreada es la mitad atacada.</li><li>El estático atrapa ~85% y con el ataque cae a ~43%. Se queda ahí: no tiene cómo aprender.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>(Avanzar sin pausa: es la misma figura en tres pasos.)</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Ventana</dt><dd>300 mensajes, media de 20 semillas</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper Fig. 1</li></ul></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d10">
+  <header class="diapo-cab">
+    <span class="num">10</span>
+    <h3>Hedge cae con él, pero se recupera a medias</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>0:30</b> · 8:15–8:45</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-10" data-n="10"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Hedge cae con el estático y después se recupera.</p>
+      <ul class="guion"><li>Hedge cae al principio porque le cree bastante a Naive Bayes, que es el estático.</li><li>Después se recupera hasta ~60%, sin reentrenar nada. Enseguida vemos por qué.</li></ul>
+      
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Spam atrapado por Hedge</dt><dd>cae a ≈ 45% y vuelve a ≈ 60%</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper Fig. 1</li></ul></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d11">
+  <header class="diapo-cab">
+    <span class="num">11</span>
+    <h3>Reentrenar aprende las palabras nuevas</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>0:30</b> · 8:45–9:15</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-11" data-n="11"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">SGD vuelve casi al nivel previo porque aprende «wiin» como palabra de spam.</p>
+      <ul class="guion"><li>SGD también cae, menos, y vuelve casi al nivel previo al ataque.</li><li>Puede porque reentrena: aprende las palabras ofuscadas. Hedge no, porque sus expertos están congelados.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«¿Y cómo hace Hedge para recuperarse sin aprender palabras?»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Spam atrapado por SGD</dt><dd>83 ± 2% en la mitad atacada</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper Fig. 1</li></ul></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="A" id="d12">
+  <header class="diapo-cab">
+    <span class="num">12</span>
+    <h3>Por qué funciona: la apuesta ya estaba cubierta</h3>
+    <span class="chip chip-a">Orador A</span>
+    <span class="tiempo"><b>1:15</b> · 9:15–10:30</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-12" data-n="12"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Hedge no había apostado todo al mejor del momento, y después mueve el peso al experto que sobrevive.</p>
+      <ul class="guion"><li>Explicar el gráfico: el alto de cada franja es el peso de ese experto en Hedge.</li><li>Punto 1: al llegar el ataque, el peso estaba repartido en tercios.</li><li>Punto 2: el peso migra al experto estructural en unos 1.000 mensajes, y termina con 0,96.</li><li>El estructural sobrevive porque mira el formato, no las palabras.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Todo esto con todas las etiquetas. Ezequiel muestra qué pasa cuando escasean.» → pasa a B</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Pesos al ataque</dt><dd>NB 0,36 · estructural 0,33 · otros 0,31</dd></div><div class='dato'><dt>Pesos al final</dt><dd>estructural 0,96 · NB 0,04</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper Fig. 1</li><li>Paper §5</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>¿Hedge se olvida de lo que pasó antes?</p><p class='a'>No: compite contra el mejor experto fijo de todo el horizonte. Para drift general existe Fixed-Share (Herbster & Warmuth, 1998).</p></div></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="B" id="d13">
+  <header class="diapo-cab">
+    <span class="num">13</span>
+    <h3>Con pocas etiquetas, combinar le gana a reentrenar</h3>
+    <span class="chip chip-b">Orador B</span>
+    <span class="tiempo"><b>1:30</b> · 10:30–12:00</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-13" data-n="13"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Reentrenar necesita etiquetas frecuentes; cuando escasean, combinar es más robusto.</p>
+      <ul class="guion"><li>Explicar el eje: cuántos mensajes reporta el usuario, de todos a 1 de cada 20.</li><li>Con todas las etiquetas, reentrenar gana claramente: 73 contra 133.</li><li>A medida que bajan las etiquetas, SGD se degrada mucho más rápido que Hedge.</li><li>Las curvas se cruzan entre 1 de cada 5 y 1 de cada 20: en la zona azul, Hedge gana en 15 de 20 semillas y SGD termina peor que no adaptarse.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Nos objetaron que esto podía ser un artefacto. Lo probamos.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Hedge</dt><dd>133 · 142 · 157 · 189 errores</dd></div><div class='dato'><dt>SGD online</dt><dd>73 · 100 · 141 · 210 errores</dd></div><div class='dato'><dt>Etiquetas</dt><dd>100% · 50% · 20% · 5%</dd></div><div class='dato'><dt>Gana Hedge</dt><dd>0 · 0 · 2 · 15 de 20 semillas</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper Fig. 3</li><li>Paper §5, «Etiqueta escasa»</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>¿Cómo modelan la escasez?</p><p class='a'>Cada mensaje se etiqueta con probabilidad ρ. Hedge usa el estimador ℓ/ρ con η = √ρ · η_T. Hedge y SGD ven exactamente las mismas rondas etiquetadas.</p></div></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="B" id="d14">
+  <header class="diapo-cab">
+    <span class="num">14</span>
+    <h3>No es un artefacto de cómo se pondera</h3>
+    <span class="chip chip-b">Orador B</span>
+    <span class="tiempo"><b>1:15</b> · 12:00–13:15</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-14" data-n="14"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Reponderar a SGD lo empeora; la ventaja de Hedge es estructural.</p>
+      <ul class="guion"><li>Contar la objeción del revisor: SGD perdería por no reponderar sus ejemplos como hace Hedge.</li><li>Lo probamos: reponderar empeora a SGD, de 210 a 240 o a 323 errores. La línea azul es Hedge, con 189.</li><li>La razón es de conteo: Hedge aprende 5 pesos; reentrenar tiene que aprender un peso por cada palabra nueva.</li><li>Lo que sí paga Hedge es varianza: con 5% de etiquetas, cada observación pesa ≈ 4,5 veces más.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Ahora, dos precisiones sobre la teoría de la materia.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Con 5% de etiquetas</dt><dd>Hedge 189 · SGD 210</dd></div><div class='dato'><dt>SGD reponderado</dt><dd>× 1/√ρ: 240 · × 1/ρ: 323</dd></div><div class='dato'><dt>Estático</dt><dd>190</dd></div><div class='dato'><dt>Factor de varianza</dt><dd>1/√0,05 ≈ 4,5</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Auer et al. (2002), estimador ℓ/ρ</li><li>src/reponderacion_sgd.py</li><li>Paper §5</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>¿Por qué a Hedge sí le sirve dividir por ρ?</p><p class='a'>Porque le evita sesgo al comparar expertos entre sí. A SGD, multiplicar el peso solo le agranda los pasos.</p></div></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="B" id="d15">
+  <header class="diapo-cab">
+    <span class="num">15</span>
+    <h3>La cota de la teoría no es la del voto pesado</h3>
+    <span class="chip chip-b">Orador B</span>
+    <span class="tiempo"><b>1:30</b> · 13:15–14:45</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-15" data-n="15"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">La garantía vale para el Hedge que sortea, no para el que vota.</p>
+      <ul class="guion"><li>En clase, las slides 71 y 73 presentan juntos el voto pesado y la cota.</li><li>Pero la cota es del Hedge randomizado. Un jugador predecible se puede simular.</li><li>Construimos un adversario que simula al determinístico y etiqueta lo contrario: su regret crece lineal, T/2 (línea roja).</li><li>El randomizado, en la misma secuencia, queda en ≈ 14, bajo su cota de 37: casi pegado al piso del gráfico.</li><li>Aclarar que en el stream real el determinístico incluso anda mejor: la diferencia es de peor caso.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«La segunda precisión es sobre qué cota usar.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Secuencia sintética</dt><dd>T = 4.000, K = 2</dd></div><div class='dato'><dt>Determinístico</dt><dd>regret 2.000 = T/2</dd></div><div class='dato'><dt>Randomizado</dt><dd>≈ 14 (cota ≈ 37)</dd></div><div class='dato'><dt>En el stream de spam</dt><dd>determinístico −2,6 ± 4,9</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Freund & Schapire (1997)</li><li>Cesa-Bianchi & Lugosi (2006)</li><li>Paper §3.1 y Fig. 2B</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>Si el determinístico anda mejor en la práctica, ¿por qué importa?</p><p class='a'>Porque solo el randomizado tiene garantía contra un adversario. En datos benignos se puede usar el determinístico, pero sin cobertura de peor caso.</p></div></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="B" id="d16">
+  <header class="diapo-cab">
+    <span class="num">16</span>
+    <h3>Cada cota vale para su tasa de aprendizaje</h3>
+    <span class="chip chip-b">Orador B</span>
+    <span class="tiempo"><b>1:15</b> · 14:45–16:00</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-16" data-n="16"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Hay dos cotas y cada una vale solo para su propio η.</p>
+      <ul class="guion"><li>La cota de peor caso vale para η sintonizado por T; la cota small-loss, para η sintonizado por la pérdida del mejor experto.</li><li>Las dos se cumplen en las 20 semillas: cada línea llena queda bajo su línea punteada del mismo color.</li><li>La small-loss da la mitad de regret, pero necesita información que bajo drift no tenemos.</li><li>Señalar que la cota small-loss cambia de pendiente con el ataque, porque sigue la pérdida acumulada.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Tres lecciones que sirven fuera de este trabajo.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>η de peor caso</dt><dd>0,054 → regret 31,2 ± 1,5 · cota 59,9</dd></div><div class='dato'><dt>η small-loss</dt><dd>≈ 0,128 → regret 15,1 ± 1,4 · cota 25,2</dd></div><div class='dato'><dt>Constante de la slide</dt><dd>√(2T ln K) = 119,8, el doble</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Freund & Schapire (1997), Teorema 2 y Lema 4</li><li>Paper §2 y Fig. 2A</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>¿Por qué la cota de la slide es el doble?</p><p class='a'>Es una versión conservadora. La derivación por el lema de Hoeffding da √(T ln K / 2) en t = T.</p></div></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="B" id="d17">
+  <header class="diapo-cab">
+    <span class="num">17</span>
+    <h3>Tres cosas que sirven fuera de este trabajo</h3>
+    <span class="chip chip-b">Orador B</span>
+    <span class="tiempo"><b>1:30</b> · 16:00–17:30</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-17" data-n="17"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Medir bien, validar lo que importa y asegurarse de que algún experto sobreviva.</p>
+      <ul class="guion"><li>La accuracy engaña con datos desbalanceados.</li><li>La validación cruzada sobre datos sin drift no sirve para elegir hiperparámetros de adaptación: tuvimos que fijar el α de SGD.</li><li>Combinar solo funciona si algún experto sobrevive: con la primera versión del estructural, Hedge no recuperaba nada.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«¿Qué hacemos con esto?»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>No marcar nada</dt><dd>86,95% de acierto</dd></div><div class='dato'><dt>CV eligió α = 10⁻⁴</dt><dd>en 8 de 20 semillas: 125–153 errores contra 65–83</dd></div><div class='dato'><dt>Estructural simple</dt><dd>0,995 del peso en el estático dañado (semilla de desarrollo)</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper §5 y §6</li><li>docs/plan.md §4</li></ul><h4>Si preguntan</h4><div class='qa'><p class='q'>¿Por qué el estático es Naive Bayes y no el que elige la validación cruzada?</p><p class='a'>La CV habría elegido al estructural en 6 de 20 semillas. El ataque se construye contra un filtro bayesiano, así que el estático tiene que ser ese filtro.</p></div></aside>
+  </div>
+</article><h2 class='seccion'><span>3</span>Cierre</h2>
+<article class="diapo" data-orador="B" id="d18">
+  <header class="diapo-cab">
+    <span class="num">18</span>
+    <h3>Cuándo combinar y cuándo reentrenar</h3>
+    <span class="chip chip-b">Orador B</span>
+    <span class="tiempo"><b>1:00</b> · 17:30–18:30</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-18" data-n="18"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Lowd y Meek tenían razón a medias: reentrenar seguido funciona si hay etiquetas seguido.</p>
+      <ul class="guion"><li>Con etiquetas abundantes, reentrenar.</li><li>Con etiquetas escasas, combinar expertos diversos, con al menos uno robusto al ataque.</li><li>Siempre, medir spam atrapado y legítimo bloqueado por separado.</li><li>Cerrar con la pregunta abierta y aclarar que no la probamos.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Y lo que este trabajo no muestra.»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Con todas las etiquetas</dt><dd>SGD 73 · Hedge 133 errores</dd></div><div class='dato'><dt>Con 5% de etiquetas</dt><dd>Hedge 189 · SGD 210 errores</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Paper §6 y Conclusión</li></ul></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="B" id="d19">
+  <header class="diapo-cab">
+    <span class="num">19</span>
+    <h3>Lo que este trabajo no muestra</h3>
+    <span class="chip chip-b">Orador B</span>
+    <span class="tiempo"><b>0:45</b> · 18:30–19:15</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-19" data-n="19"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Los límites son reales, y los más importantes son dos.</p>
+      <ul class="guion"><li>No leer las seis: mencionar las dos principales.</li><li>El drift es sintético, porque el corpus no tiene fechas.</li><li>El experto robusto lo es para este ataque en particular.</li></ul>
+      <p class="pase"><span class="etq">Pase</span>«Gracias. ¿Preguntas?»</p>
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Adversario adaptativo</dt><dd>degradaría √T a T^(2/3)</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Cesa-Bianchi, Dekel & Shamir (2013)</li><li>Paper §6</li></ul></aside>
+  </div>
+</article>
+<article class="diapo" data-orador="B" id="d20">
+  <header class="diapo-cab">
+    <span class="num">20</span>
+    <h3>¿Preguntas?</h3>
+    <span class="chip chip-b">Orador B</span>
+    <span class="tiempo"><b>0:15</b> · 19:15–19:30</span>
+    <label class="ensayo"><input type="checkbox" id="ensayo-20" data-n="20"> Ensayada</label>
+  </header>
+  <div class="diapo-cuerpo">
+    <div class="trabajo">
+      <p class="mensaje">Abrir preguntas.</p>
+      <ul class="guion"><li>Agradecer y abrir preguntas. Repartir las respuestas según el tema de cada uno.</li></ul>
+      
+    </div>
+    <aside class="apoyo"><h4>Datos a mano</h4><dl class='datos'><div class='dato'><dt>Repositorio</dt><dd>github.com/pmdiaz/spam-detection-hedge</dd></div></dl><h4>Referencias</h4><ul class='refs'><li>Verificar antes de la charla que el repositorio sea público.</li></ul></aside>
+  </div>
+</article>
+
+  <section class="final">
+    <div class="caja">
+      <h2>Preguntas probables del público</h2>
+      <div class='qa'><p class='q'>¿Se generaliza a email?</p><p class='a'>El corpus es de SMS. El mecanismo, que reentrenar necesita muchos más parámetros que combinar, no depende del medio, pero no lo medimos en email.</p></div><div class='qa'><p class='q'>¿Qué pasa con un adversario que reacciona?</p><p class='a'>Hace falta policy regret, y con memoria acotada las tasas se degradan de √T a T^(2/3) (Cesa-Bianchi, Dekel & Shamir, 2013). No lo corrimos.</p></div><div class='qa'><p class='q'>¿Por qué no usaron EXP3 para el caso con poca información?</p><p class='a'>En clasificación binaria, saber si la predicción jugada acertó revela la etiqueta, y con ella la pérdida de todos los expertos: el feedback bandit colapsa en información completa.</p></div><div class='qa'><p class='q'>¿Y si el modelo que reentrena fuera uno de los expertos de Hedge?</p><p class='a'>Es la pregunta abierta natural. No lo probamos.</p></div><div class='qa'><p class='q'>¿Cómo eligieron las 800 palabras del ataque?</p><p class='a'>Calibrando hasta reducir a la mitad la detección del estático, sin que la mediana del largo crezca más de 20%.</p></div>
+    </div>
+    <div class="caja">
+      <h2>Antes de ensayar en Canva</h2>
+      <ul class="checklist">
+        <li>Importar <code>combinar_o_reentrenar.pptx</code> desde Crear → Importar archivo.</li>
+        <li>Canva no importa las transiciones de PowerPoint: agregar «Desvanecer» desde Animar.</li>
+        <li>Los gráficos son imágenes generadas por <code>visuales.py</code> desde los resultados: para cambiar uno, regenerarlo, no editarlo a mano.</li>
+        <li>Revisar fuentes: titulares en Georgia y texto en Arial. Si Canva no tiene Georgia, elegir otra serif para todos los titulares.</li>
+        <li>Las diapositivas 9 a 11 son la misma figura en tres pasos: mantenerlas alineadas.</li>
+        <li>Confirmar que el repositorio sea público antes de mostrar el enlace.</li>
+      </ul>
+      <h2>Referencias</h2>
+      <ol class="biblio"><li>Freund, Y. y Schapire, R. E. (1997). A decision-theoretic generalization of on-line learning and an application to boosting. <em>JCSS</em>, 55(1).</li><li>Auer, P., Cesa-Bianchi, N., Freund, Y. y Schapire, R. E. (2002). The nonstochastic multiarmed bandit problem. <em>SIAM J. Comput.</em>, 32(1).</li><li>Lowd, D. y Meek, C. (2005). Good word attacks on statistical spam filters. <em>CEAS</em>.</li><li>Almeida, T. A., Gómez Hidalgo, J. M. y Yamakami, A. (2011). Contributions to the study of SMS spam filtering. <em>DocEng'11</em>.</li><li>Cesa-Bianchi, N., Dekel, O. y Shamir, O. (2013). Online learning with switching costs and other adaptive adversaries. arXiv:1302.4387.</li><li>Herbster, M. y Warmuth, M. K. (1998). Tracking the best expert. <em>Machine Learning</em>, 32(2).</li><li>Cesa-Bianchi, N. y Lugosi, G. (2006). <em>Prediction, Learning, and Games</em>. Cambridge University Press.</li><li>Fraiman, D. (2026). Tópicos Avanzados en Ciencia de Datos, clase 2 (slides 57 a 79).</li></ol>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var CLAVE = "guion-combinar-reentrenar-v2"; // v2: mazo de 20 diapositivas, otra numeracion
+  var estado = { filtro: "todos", ensayadas: [] };
+  try {
+    var guardado = JSON.parse(localStorage.getItem(CLAVE) || "null");
+    if (guardado) estado = guardado;
+  } catch (e) {}
+
+  function guardar() {
+    try { localStorage.setItem(CLAVE, JSON.stringify(estado)); } catch (e) {}
+  }
+
+  var diapos = Array.prototype.slice.call(document.querySelectorAll(".diapo"));
+  var botones = Array.prototype.slice.call(document.querySelectorAll(".filtro button"));
+  var casillas = Array.prototype.slice.call(document.querySelectorAll(".ensayo input"));
+  var progreso = document.getElementById("progreso");
+
+  function aplicarFiltro() {
+    diapos.forEach(function (d) {
+      d.hidden = estado.filtro !== "todos" && d.dataset.orador !== estado.filtro;
+    });
+    botones.forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.filtro === estado.filtro));
+    });
+  }
+
+  function aplicarEnsayos() {
+    casillas.forEach(function (c) {
+      var hecha = estado.ensayadas.indexOf(c.dataset.n) !== -1;
+      c.checked = hecha;
+      c.closest(".diapo").classList.toggle("hecha", hecha);
+    });
+    progreso.textContent = estado.ensayadas.length + " de " + casillas.length + " ensayadas";
+  }
+
+  botones.forEach(function (b) {
+    b.addEventListener("click", function () {
+      estado.filtro = b.dataset.filtro;
+      aplicarFiltro();
+      guardar();
+    });
+  });
+  casillas.forEach(function (c) {
+    c.addEventListener("change", function () {
+      var i = estado.ensayadas.indexOf(c.dataset.n);
+      if (c.checked && i === -1) estado.ensayadas.push(c.dataset.n);
+      if (!c.checked && i !== -1) estado.ensayadas.splice(i, 1);
+      aplicarEnsayos();
+      guardar();
+    });
+  });
+
+  aplicarFiltro();
+  aplicarEnsayos();
+})();
+</script>
