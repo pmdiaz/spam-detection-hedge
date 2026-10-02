@@ -1,10 +1,11 @@
-// Genera la presentacion "Combinar o reentrenar" en estilo editorial (20 diapositivas, 20 minutos).
+// Genera la presentacion "Combinar o reentrenar" en estilo editorial (18 diapositivas, 20 minutos).
 //
 // Una misma descripcion produce dos salidas:
 //   - el .pptx, para abrir en PowerPoint o importar en Canva (texto y formas quedan editables);
 //   - una vista previa HTML con las mismas posiciones, para revisar el diseño sin PowerPoint.
 //
-// Los graficos son las imagenes de visuales/ (las genera visuales.py desde los resultados).
+// Los graficos son las imagenes de visuales/ (las genera visuales.py desde los resultados) y la
+// animacion del ataque (la genera animacion.py).
 //
 // Uso:
 //   SKILL_DIR=<skill pptx> NODE_PATH=<node_modules con pptxgenjs> \
@@ -142,6 +143,15 @@ function imagen(slide, nombre, x, y, wMax, hMax, descripcion) {
   slide.addImage({ path: archivo, x, y, w, h, altText: descripcion });
   actual.elementos.push({ tipo: "imagen", archivo, o: { x, y, w, h } });
   return { w, h };
+}
+
+// Video con su portada: el .pptx lo embebe; la vista previa muestra la portada.
+function video(slide, nombre, portada, x, y, w, h) {
+  const archivo = path.join(VISUALES, nombre);
+  const archivoPortada = path.join(VISUALES, portada);
+  const datosPortada = "data:image/png;base64," + fs.readFileSync(archivoPortada).toString("base64");
+  slide.addMedia({ type: "video", path: archivo, x, y, w, h, cover: datosPortada, objectName: "animación del ataque" });
+  actual.elementos.push({ tipo: "imagen", archivo: archivoPortada, o: { x, y, w, h } });
 }
 
 function titulo(slide, contenido) {
@@ -412,28 +422,19 @@ pres.addSection({ title: S2 });
   s.addNotes("A · 0:45. La misma comparación en mensajes concretos. De los 305 spams que llegan atacados, el estático atrapa 128, Hedge 180 y SGD 252. Hedge atrapa 52 más que el estático; SGD, 72 más que Hedge.");
 }
 
-// --- 9 a 11. La figura del paper, en tres pasos ------------------------------
-const pasosFigura = [
-  ["Con el ataque, el estático cae y no se recupera",
-   "Spam atrapado por el estático: ~85% antes del ataque, cae a 43% y no se recupera.",
-   "A · 0:30. Primero solo el estático: atrapa ~85% del spam; con el ataque cae a ~43% y se queda ahí."],
-  ["Hedge cae con él, pero se recupera a medias",
-   "Se suma Hedge: cae junto con el estático y se recupera hasta 62%.",
-   "A · 0:30. Hedge cae con el estático, porque al principio le cree a Naive Bayes, y después se recupera hasta ~60%."],
-  ["Reentrenar aprende las palabras nuevas",
-   "Se suma SGD online: cae menos y vuelve a 89%, casi el nivel previo al ataque.",
-   "A · 0:30. SGD también cae, menos, y vuelve casi al nivel previo: aprende «wiin» como palabra de spam. Hedge no puede, porque sus expertos están congelados."],
-];
-pasosFigura.forEach(([titular, descripcion, nota], i) => {
+// --- 9. La animacion del ataque ------------------------------------------------
+// El video ya trae su antetitulo, titular y subtitulos (animacion.py), asi que ocupa la diapositiva entera.
+{
   const s = nuevaDiapositiva("CONTENIDO", S2);
-  encabezado(s, "HALLAZGO 1", titular, "Spam atrapado en una ventana móvil de 300 mensajes.", 1);
-  imagen(s, "04_spam_atrapado_paso" + (i + 1) + ".png", 0.45, 1.95, 11.6, 4.85,
-    descripcion);
-  fuente(s, FUENTE_SEMILLAS + " Es la figura 1 del paper.");
-  s.addNotes(nota);
-});
+  video(s, "animacion_ataque.mp4", "animacion_portada.png", 0, 0, 13.333, 7.5);
+  s.addNotes("A · 1:30. Dejar correr la animación y narrar sobre ella; se puede pausar con un clic. " +
+    "Fase 1: sin ataque, los tres atrapan parecido. Fase 2: llega el ataque y los tres caen; el estático se queda en ~43%. " +
+    "Fase 3: abajo, el peso de Hedge pasa al experto estructural (violeta) y Hedge se recupera hasta ~60%. " +
+    "Fase 4: SGD aprendió las palabras nuevas y vuelve casi al nivel previo. " +
+    "Al final, los contadores: 190, 133 y 73 errores en la mitad atacada.");
+}
 
-// --- 12. Por que funciona ---------------------------------------------------
+// --- 10. Por que funciona ---------------------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 1", "Por qué funciona: la apuesta ya estaba cubierta",
@@ -449,7 +450,7 @@ pasosFigura.forEach(([titular, descripcion, nota], i) => {
   s.addNotes("A · 1:15 (y pasa a B). El porqué. Hedge no había apostado todo al mejor del momento: al llegar el ataque tenía el peso en tercios. Cuando el ataque rompe a Naive Bayes, el peso migra al estructural, que mira formato y no palabras. Pase: «Esto con todas las etiquetas. Ezequiel muestra qué pasa cuando escasean.»");
 }
 
-// --- 13. Hallazgo 2: el cruce ------------------------------------------------
+// --- 11. Hallazgo 2: el cruce ------------------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 2 · ¿CUÁNTA ETIQUETA HACE FALTA?", "Con pocas etiquetas, combinar le gana a reentrenar",
@@ -464,7 +465,7 @@ pasosFigura.forEach(([titular, descripcion, nota], i) => {
   s.addNotes("B · 1:30. Respuesta a la pregunta 2. Con todas las etiquetas, reentrenar gana claro: 73 contra 133. A medida que el usuario reporta menos, SGD se degrada mucho más rápido. Las curvas se cruzan entre 1 de cada 5 y 1 de cada 20: ahí Hedge gana en 15 de 20 semillas, y SGD termina peor que no adaptarse.");
 }
 
-// --- 14. No es un artefacto --------------------------------------------------
+// --- 12. No es un artefacto --------------------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 2", "No es un artefacto de cómo se pondera",
@@ -484,7 +485,7 @@ pasosFigura.forEach(([titular, descripcion, nota], i) => {
   s.addNotes("B · 1:15. Un revisor nos objetó que SGD perdía por no reponderar como Hedge. Lo probamos: reponderar lo empeora, de 210 a 240 o 323 errores. La razón es de conteo: Hedge aprende 5 pesos; reentrenar necesita un peso por cada palabra nueva. Lo que sí sufre Hedge es la varianza del estimador.");
 }
 
-// --- 15. Hallazgo 3: deterministico contra randomizado -----------------------
+// --- 13. Hallazgo 3: deterministico contra randomizado -----------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 3 · LA TEORÍA, CON PRECISIÓN", "La cota de la teoría no es la del voto pesado", null, 3);
@@ -502,7 +503,7 @@ pasosFigura.forEach(([titular, descripcion, nota], i) => {
   s.addNotes("B · 1:30. Primera precisión sobre la teoría. Las slides 71 y 73 presentan juntos el voto pesado y la cota, pero la cota es del Hedge randomizado. Construimos un adversario que simula al determinístico y le etiqueta lo contrario: su regret crece lineal, T/2. El randomizado queda en 14, bajo su cota de 37. En el stream real el determinístico anda mejor: la diferencia es de peor caso.");
 }
 
-// --- 16. Cada cota con su eta ------------------------------------------------
+// --- 14. Cada cota con su eta ------------------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 3", "Cada cota vale para su tasa de aprendizaje",
@@ -520,7 +521,7 @@ pasosFigura.forEach(([titular, descripcion, nota], i) => {
   s.addNotes("B · 1:15. Segunda precisión. Hay dos cotas y cada una vale para su propia tasa de aprendizaje. Las dos se cumplen en las 20 semillas. La small-loss da la mitad de regret, pero requiere saber cuántos errores comete el mejor experto, algo que bajo ataque no sabemos. Notar cómo esa cota cambia de pendiente con el ataque.");
 }
 
-// --- 17. Hallazgo 4: lecciones de metodo -------------------------------------
+// --- 15. Hallazgo 4: lecciones de metodo -------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 4 · LECCIONES DE MÉTODO", "Tres cosas que sirven fuera de este trabajo", null, 4);
@@ -546,7 +547,7 @@ pasosFigura.forEach(([titular, descripcion, nota], i) => {
 const S3 = "3 · Cierre";
 pres.addSection({ title: S3 });
 
-// --- 18. Cuando combinar y cuando reentrenar ---------------------------------
+// --- 16. Cuando combinar y cuando reentrenar ---------------------------------
 {
   const s = nuevaDiapositiva("OSCURA", S3);
   texto(s, "EN RESUMEN", { x: 0.6, y: 0.45, w: 8, h: 0.25, fontSize: 11, bold: true, color: HEX.tenue, charSpacing: 2 });
@@ -569,7 +570,7 @@ pres.addSection({ title: S3 });
   s.addNotes("B · 1:00. La conclusión práctica. Lowd y Meek tenían razón a medias: reentrenar seguido funciona si hay etiquetas seguido. Cuando escasean, combinar es más robusto porque tiene muchos menos parámetros. Cerrar con la pregunta abierta, aclarando que no la probamos.");
 }
 
-// --- 19. Limitaciones ---------------------------------------------------------
+// --- 17. Limitaciones ---------------------------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S3);
   encabezado(s, "LIMITACIONES", "Lo que este trabajo no muestra", null, 0);
@@ -592,7 +593,7 @@ pres.addSection({ title: S3 });
   s.addNotes("B · 0:45. Mencionar rápido, sin leer todas. Las dos más importantes: el drift es sintético y el experto robusto lo es para este ataque en particular.");
 }
 
-// --- 20. Preguntas -------------------------------------------------------------
+// --- 18. Preguntas -------------------------------------------------------------
 {
   const s = nuevaDiapositiva("OSCURA", S3);
   texto(s, "¿Preguntas?", { x: 0.8, y: 2.1, w: 8, h: 1.2, fontSize: 64, fontFace: SERIF, color: HEX.blanco });

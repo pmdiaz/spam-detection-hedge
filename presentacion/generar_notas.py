@@ -23,7 +23,7 @@ DIAPOSITIVAS = [
              "Las palabras de la derecha son reales: así queda un spam después de nuestro ataque.",
          ],
          pase="«Empecemos por el problema.»",
-         datos=[("Duración total", "20 min, 20 diapositivas"), ("Orador A", "diapositivas 1 a 12"), ("Orador B", "diapositivas 13 a 20")],
+         datos=[("Duración total", "20 min, 18 diapositivas"), ("Orador A", "diapositivas 1 a 10"), ("Orador B", "diapositivas 11 a 18")],
          refs=["Paper y código: github.com/pmdiaz/spam-detection-hedge"],
          preguntas=[]),
     dict(n=2, sec=1, orador="A", seg=75, titulo="Un spammer que aprende a esquivar el filtro",
@@ -112,34 +112,24 @@ DIAPOSITIVAS = [
              "El estático atrapa 128 de 305; Hedge, 180; SGD, 252.",
              "Hedge atrapa 52 más que el estático; SGD, 72 más que Hedge.",
          ],
-         pase="«Veamos cómo pasa esto a lo largo del tiempo.»",
+         pase="«Veamos cómo pasa esto mensaje a mensaje.»",
          datos=[("Spam atrapado, mitad atacada", "42 ± 11% · 59 ± 3% · 83 ± 2%"), ("Spams atacados", "≈ 305 por semilla")],
          refs=["Paper Tabla 1"], preguntas=[]),
-    dict(n=9, sec=2, orador="A", seg=30, titulo="Con el ataque, el estático cae y no se recupera",
-         mensaje="Primer paso de la figura: el modelo que no se adapta.",
+    dict(n=9, sec=2, orador="A", seg=90, titulo="Qué pasa mientras dura el ataque (animación)",
+         mensaje="El estático cae y no se recupera; Hedge se recupera a medias moviendo el peso; SGD aprende las palabras nuevas.",
          guion=[
-             "Explicar los ejes: spam atrapado en una ventana móvil de 300 mensajes; la zona sombreada es la mitad atacada.",
-             "El estático atrapa ~85% y con el ataque cae a ~43%. Se queda ahí: no tiene cómo aprender.",
-         ],
-         pase="(Avanzar sin pausa: es la misma figura en tres pasos.)",
-         datos=[("Ventana", "300 mensajes, media de 20 semillas")], refs=["Paper Fig. 1"], preguntas=[]),
-    dict(n=10, sec=2, orador="A", seg=30, titulo="Hedge cae con él, pero se recupera a medias",
-         mensaje="Hedge cae con el estático y después se recupera.",
-         guion=[
-             "Hedge cae al principio porque le cree bastante a Naive Bayes, que es el estático.",
-             "Después se recupera hasta ~60%, sin reentrenar nada. Enseguida vemos por qué.",
-         ],
-         pase="",
-         datos=[("Spam atrapado por Hedge", "cae a ≈ 45% y vuelve a ≈ 60%")], refs=["Paper Fig. 1"], preguntas=[]),
-    dict(n=11, sec=2, orador="A", seg=30, titulo="Reentrenar aprende las palabras nuevas",
-         mensaje="SGD vuelve casi al nivel previo porque aprende «wiin» como palabra de spam.",
-         guion=[
-             "SGD también cae, menos, y vuelve casi al nivel previo al ataque.",
-             "Puede porque reentrena: aprende las palabras ofuscadas. Hedge no, porque sus expertos están congelados.",
+             "Dejar correr la animación y narrar sobre ella; con un clic se pausa si hace falta explicar algo.",
+             "Fase 1: sin ataque, los tres filtros atrapan parecido, entre 80% y 90% del spam.",
+             "Fase 2: llega el ataque y los tres caen. El estático se queda en ~43%: no tiene cómo aprender.",
+             "Fase 3: mirar el panel de abajo. El peso de Hedge pasa al experto estructural (violeta) y Hedge sube hasta ~60%.",
+             "Fase 4: SGD aprendió las palabras ofuscadas y vuelve casi al nivel previo. Hedge no puede: sus expertos están congelados.",
+             "Al final, señalar los contadores: 190, 133 y 73 errores en la mitad atacada.",
          ],
          pase="«¿Y cómo hace Hedge para recuperarse sin aprender palabras?»",
-         datos=[("Spam atrapado por SGD", "83 ± 2% en la mitad atacada")], refs=["Paper Fig. 1"], preguntas=[]),
-    dict(n=12, sec=2, orador="A", seg=75, titulo="Por qué funciona: la apuesta ya estaba cubierta",
+         datos=[("Video", "24 s: 4 s sin ataque, 11 s de ataque, 5 s de resultado"), ("Ventana", "300 mensajes, media de 20 semillas"),
+                ("Spam atrapado, mitad atacada", "42 ± 11% · 59 ± 3% · 83 ± 2%")],
+         refs=["Paper Fig. 1", "presentacion/animacion.py"], preguntas=[]),
+    dict(n=10, sec=2, orador="A", seg=75, titulo="Por qué funciona: la apuesta ya estaba cubierta",
          mensaje="Hedge no había apostado todo al mejor del momento, y después mueve el peso al experto que sobrevive.",
          guion=[
              "Explicar el gráfico: el alto de cada franja es el peso de ese experto en Hedge.",
@@ -152,7 +142,7 @@ DIAPOSITIVAS = [
          refs=["Paper Fig. 1", "Paper §5"],
          preguntas=[("¿Hedge se olvida de lo que pasó antes?",
                      "No: compite contra el mejor experto fijo de todo el horizonte. Para drift general existe Fixed-Share (Herbster & Warmuth, 1998).")]),
-    dict(n=13, sec=2, orador="B", seg=90, titulo="Con pocas etiquetas, combinar le gana a reentrenar",
+    dict(n=11, sec=2, orador="B", seg=90, titulo="Con pocas etiquetas, combinar le gana a reentrenar",
          mensaje="Reentrenar necesita etiquetas frecuentes; cuando escasean, combinar es más robusto.",
          guion=[
              "Explicar el eje: cuántos mensajes reporta el usuario, de todos a 1 de cada 20.",
@@ -166,7 +156,7 @@ DIAPOSITIVAS = [
          refs=["Paper Fig. 3", "Paper §5, «Etiqueta escasa»"],
          preguntas=[("¿Cómo modelan la escasez?",
                      "Cada mensaje se etiqueta con probabilidad ρ. Hedge usa el estimador ℓ/ρ con η = √ρ · η_T. Hedge y SGD ven exactamente las mismas rondas etiquetadas.")]),
-    dict(n=14, sec=2, orador="B", seg=75, titulo="No es un artefacto de cómo se pondera",
+    dict(n=12, sec=2, orador="B", seg=75, titulo="No es un artefacto de cómo se pondera",
          mensaje="Reponderar a SGD lo empeora; la ventaja de Hedge es estructural.",
          guion=[
              "Contar la objeción del revisor: SGD perdería por no reponderar sus ejemplos como hace Hedge.",
@@ -180,7 +170,7 @@ DIAPOSITIVAS = [
          refs=["Auer et al. (2002), estimador ℓ/ρ", "src/reponderacion_sgd.py", "Paper §5"],
          preguntas=[("¿Por qué a Hedge sí le sirve dividir por ρ?",
                      "Porque le evita sesgo al comparar expertos entre sí. A SGD, multiplicar el peso solo le agranda los pasos.")]),
-    dict(n=15, sec=2, orador="B", seg=90, titulo="La cota de la teoría no es la del voto pesado",
+    dict(n=13, sec=2, orador="B", seg=90, titulo="La cota de la teoría no es la del voto pesado",
          mensaje="La garantía vale para el Hedge que sortea, no para el que vota.",
          guion=[
              "En clase, las slides 71 y 73 presentan juntos el voto pesado y la cota.",
@@ -195,7 +185,7 @@ DIAPOSITIVAS = [
          refs=["Freund & Schapire (1997)", "Cesa-Bianchi & Lugosi (2006)", "Paper §3.1 y Fig. 2B"],
          preguntas=[("Si el determinístico anda mejor en la práctica, ¿por qué importa?",
                      "Porque solo el randomizado tiene garantía contra un adversario. En datos benignos se puede usar el determinístico, pero sin cobertura de peor caso.")]),
-    dict(n=16, sec=2, orador="B", seg=75, titulo="Cada cota vale para su tasa de aprendizaje",
+    dict(n=14, sec=2, orador="B", seg=75, titulo="Cada cota vale para su tasa de aprendizaje",
          mensaje="Hay dos cotas y cada una vale solo para su propio η.",
          guion=[
              "La cota de peor caso vale para η sintonizado por T; la cota small-loss, para η sintonizado por la pérdida del mejor experto.",
@@ -209,7 +199,7 @@ DIAPOSITIVAS = [
          refs=["Freund & Schapire (1997), Teorema 2 y Lema 4", "Paper §2 y Fig. 2A"],
          preguntas=[("¿Por qué la cota de la slide es el doble?",
                      "Es una versión conservadora. La derivación por el lema de Hoeffding da √(T ln K / 2) en t = T.")]),
-    dict(n=17, sec=2, orador="B", seg=90, titulo="Tres cosas que sirven fuera de este trabajo",
+    dict(n=15, sec=2, orador="B", seg=90, titulo="Tres cosas que sirven fuera de este trabajo",
          mensaje="Medir bien, validar lo que importa y asegurarse de que algún experto sobreviva.",
          guion=[
              "La accuracy engaña con datos desbalanceados.",
@@ -222,7 +212,7 @@ DIAPOSITIVAS = [
          refs=["Paper §5 y §6", "docs/plan.md §4"],
          preguntas=[("¿Por qué el estático es Naive Bayes y no el que elige la validación cruzada?",
                      "La CV habría elegido al estructural en 6 de 20 semillas. El ataque se construye contra un filtro bayesiano, así que el estático tiene que ser ese filtro.")]),
-    dict(n=18, sec=3, orador="B", seg=60, titulo="Cuándo combinar y cuándo reentrenar",
+    dict(n=16, sec=3, orador="B", seg=60, titulo="Cuándo combinar y cuándo reentrenar",
          mensaje="Lowd y Meek tenían razón a medias: reentrenar seguido funciona si hay etiquetas seguido.",
          guion=[
              "Con etiquetas abundantes, reentrenar.",
@@ -233,7 +223,7 @@ DIAPOSITIVAS = [
          pase="«Y lo que este trabajo no muestra.»",
          datos=[("Con todas las etiquetas", "SGD 73 · Hedge 133 errores"), ("Con 5% de etiquetas", "Hedge 189 · SGD 210 errores")],
          refs=["Paper §6 y Conclusión"], preguntas=[]),
-    dict(n=19, sec=3, orador="B", seg=45, titulo="Lo que este trabajo no muestra",
+    dict(n=17, sec=3, orador="B", seg=45, titulo="Lo que este trabajo no muestra",
          mensaje="Los límites son reales, y los más importantes son dos.",
          guion=[
              "No leer las seis: mencionar las dos principales.",
@@ -243,7 +233,7 @@ DIAPOSITIVAS = [
          pase="«Gracias. ¿Preguntas?»",
          datos=[("Adversario adaptativo", "degradaría √T a T^(2/3)")],
          refs=["Cesa-Bianchi, Dekel & Shamir (2013)", "Paper §6"], preguntas=[]),
-    dict(n=20, sec=3, orador="B", seg=15, titulo="¿Preguntas?",
+    dict(n=18, sec=3, orador="B", seg=15, titulo="¿Preguntas?",
          mensaje="Abrir preguntas.",
          guion=["Agradecer y abrir preguntas. Repartir las respuestas según el tema de cada uno."],
          pase="",
@@ -507,7 +497,7 @@ h1 {{ font-size: clamp(28px, 4vw, 38px); line-height: 1.15; margin: 0; font-weig
         <li>Canva no importa las transiciones de PowerPoint: agregar «Desvanecer» desde Animar.</li>
         <li>Los gráficos son imágenes generadas por <code>visuales.py</code> desde los resultados: para cambiar uno, regenerarlo, no editarlo a mano.</li>
         <li>Revisar fuentes: titulares en Georgia y texto en Arial. Si Canva no tiene Georgia, elegir otra serif para todos los titulares.</li>
-        <li>Las diapositivas 9 a 11 son la misma figura en tres pasos: mantenerlas alineadas.</li>
+        <li>La diapositiva 9 es un video (<code>visuales/animacion_ataque.mp4</code>). Si el PDF importado no lo trae, subir el MP4 a mano y activar la reproducción automática.</li>
         <li>Confirmar que el repositorio sea público antes de mostrar el enlace.</li>
       </ul>
       <h2>Referencias</h2>
@@ -518,7 +508,7 @@ h1 {{ font-size: clamp(28px, 4vw, 38px); line-height: 1.15; margin: 0; font-weig
 
 <script>
 (function () {{
-  var CLAVE = "guion-combinar-reentrenar-v2"; // v2: mazo de 20 diapositivas, otra numeracion
+  var CLAVE = "guion-combinar-reentrenar-v3"; // v3: mazo de 18 diapositivas, otra numeracion
   var estado = {{ filtro: "todos", ensayadas: [] }};
   try {{
     var guardado = JSON.parse(localStorage.getItem(CLAVE) || "null");
