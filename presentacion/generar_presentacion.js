@@ -1,15 +1,16 @@
 // Genera la presentacion "Combinar o reentrenar" en estilo editorial (18 diapositivas, 20 minutos).
 //
-// Una misma descripcion produce dos salidas:
+// Una misma descripcion produce tres salidas:
 //   - el .pptx, para abrir en PowerPoint o importar en Canva (texto y formas quedan editables);
-//   - una vista previa HTML con las mismas posiciones, para revisar el diseño sin PowerPoint.
+//   - una vista previa HTML con las mismas posiciones, para revisar el diseño sin PowerPoint;
+//   - una presentacion HTML para proyectar desde el navegador, con notas del orador.
 //
 // Los graficos son las imagenes de visuales/ (las genera visuales.py desde los resultados) y la
 // animacion del ataque (la genera animacion.py).
 //
 // Uso:
 //   SKILL_DIR=<skill pptx> NODE_PATH=<node_modules con pptxgenjs> \
-//     node generar_presentacion.js salida.pptx vista_previa.html
+//     node generar_presentacion.js salida.pptx vista_previa.html presentacion.html [presentacion_sin_esqueleto.html]
 const pptxgen = require("pptxgenjs");
 const fs = require("fs");
 const path = require("path");
@@ -17,6 +18,8 @@ const { applyTheme } = require(process.env.SKILL_DIR + "/scripts/apply_theme.js"
 
 const SALIDA_PPTX = process.argv[2];
 const SALIDA_HTML = process.argv[3];
+const SALIDA_PRESENTACION = process.argv[4];
+const SALIDA_ARTIFACT = process.argv[5]; // opcional: la presentacion sin esqueleto, para publicarla
 const VISUALES = path.join(__dirname, "visuales");
 
 // ---------------------------------------------------------------------------
@@ -92,9 +95,18 @@ let actual = null;
 
 function nuevaDiapositiva(layout, seccion) {
   const slide = pres.addSlide({ masterName: layout, sectionTitle: seccion });
-  actual = { fondo: layout === "OSCURA" ? HEX.tinta : HEX.papel, numero: vista.length + 1, contenido: layout === "CONTENIDO", elementos: [] };
+  actual = { fondo: layout === "OSCURA" ? HEX.tinta : HEX.papel, numero: vista.length + 1, contenido: layout === "CONTENIDO",
+    nombre: "", notas: "", elementos: [] };
   vista.push(actual);
+  const registro = actual;
+  const agregarNotas = slide.addNotes.bind(slide);
+  slide.addNotes = (notas) => { registro.notas = notas; return agregarNotas(notas); };
   return slide;
+}
+
+// Nombre de la diapositiva para la presentacion HTML (lectores de pantalla y barra de control).
+function nombrar(nombre) {
+  actual.nombre = nombre;
 }
 
 // Normaliza el contenido de un texto a una lista de corridas { text, options }.
@@ -141,7 +153,7 @@ function imagen(slide, nombre, x, y, wMax, hMax, descripcion) {
   let w = wMax, h = wMax * alto / ancho;
   if (h > hMax) { h = hMax; w = hMax * ancho / alto; }
   slide.addImage({ path: archivo, x, y, w, h, altText: descripcion });
-  actual.elementos.push({ tipo: "imagen", archivo, o: { x, y, w, h } });
+  actual.elementos.push({ tipo: "imagen", archivo, alt: descripcion, o: { x, y, w, h } });
   return { w, h };
 }
 
@@ -151,11 +163,12 @@ function video(slide, nombre, portada, x, y, w, h) {
   const archivoPortada = path.join(VISUALES, portada);
   const datosPortada = "data:image/png;base64," + fs.readFileSync(archivoPortada).toString("base64");
   slide.addMedia({ type: "video", path: archivo, x, y, w, h, cover: datosPortada, objectName: "animación del ataque" });
-  actual.elementos.push({ tipo: "imagen", archivo: archivoPortada, o: { x, y, w, h } });
+  actual.elementos.push({ tipo: "video", archivo, portada: archivoPortada, o: { x, y, w, h } });
 }
 
 function titulo(slide, contenido) {
   slide.addText(contenido, { placeholder: "title" });
+  if (typeof contenido === "string") nombrar(contenido);
   actual.elementos.push({ tipo: "texto", corridas: corridas(contenido),
     o: Object.assign({ fontFace: SERIF, color: HEX.tinta, valign: "top", lineSpacingMultiple: 1.0 }, TITULO) });
 }
@@ -209,6 +222,7 @@ pres.addSection({ title: S1 });
 // --- 1. Portada -------------------------------------------------------------
 {
   const s = nuevaDiapositiva("OSCURA", S1);
+  nombrar("Combinar o reentrenar");
   texto(s, "TÓPICOS AVANZADOS EN CIENCIA DE DATOS · MCD210 · UDESA", { x: 0.8, y: 1.15, w: 8, h: 0.3,
     fontSize: 11, bold: true, color: HEX.tenue, charSpacing: 2 });
   texto(s, "Combinar\no reentrenar", { x: 0.8, y: 1.9, w: 7.4, h: 2.3, fontSize: 64, fontFace: SERIF,
@@ -426,6 +440,7 @@ pres.addSection({ title: S2 });
 // El video ya trae su antetitulo, titular y subtitulos (animacion.py), asi que ocupa la diapositiva entera.
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
+  nombrar("Qué pasa mientras dura el ataque");
   video(s, "animacion_ataque.mp4", "animacion_portada.png", 0, 0, 13.333, 7.5);
   s.addNotes("A · 1:30. Dejar correr la animación y narrar sobre ella; se puede pausar con un clic. " +
     "Fase 1: sin ataque, los tres atrapan parecido. Fase 2: llega el ataque y los tres caen; el estático se queda en ~43%. " +
@@ -550,6 +565,7 @@ pres.addSection({ title: S3 });
 // --- 16. Cuando combinar y cuando reentrenar ---------------------------------
 {
   const s = nuevaDiapositiva("OSCURA", S3);
+  nombrar("Cuándo combinar y cuándo reentrenar");
   texto(s, "EN RESUMEN", { x: 0.6, y: 0.45, w: 8, h: 0.25, fontSize: 11, bold: true, color: HEX.tenue, charSpacing: 2 });
   texto(s, "Cuándo combinar y cuándo reentrenar", { x: 0.6, y: 0.8, w: 12, h: 0.7, fontSize: 34, fontFace: SERIF, color: HEX.blanco });
   const filas = [
@@ -596,6 +612,7 @@ pres.addSection({ title: S3 });
 // --- 18. Preguntas -------------------------------------------------------------
 {
   const s = nuevaDiapositiva("OSCURA", S3);
+  nombrar("Preguntas");
   texto(s, "¿Preguntas?", { x: 0.8, y: 2.1, w: 8, h: 1.2, fontSize: 64, fontFace: SERIF, color: HEX.blanco });
   texto(s, "Combinar o reentrenar · Pablo Díaz y Ezequiel Martinez", { x: 0.8, y: 3.5, w: 9, h: 0.45, fontSize: 20, color: HEX.claroOscuro });
   regla(s, 0.8, 4.9, 6.0, 0, HEX.reglaOscura);
@@ -608,17 +625,28 @@ pres.addSection({ title: S3 });
 }
 
 // ---------------------------------------------------------------------------
-// Vista previa HTML: mismas posiciones, en pixeles (96 por pulgada).
+// Salidas HTML: mismas posiciones que el .pptx, en pixeles (96 por pulgada).
+// Las imagenes y el video se referencian como "visuales/<archivo>", relativo al HTML.
 // ---------------------------------------------------------------------------
 function escapar(t) {
-  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function htmlElemento(e) {
+// modo "vista": marca las cajas de texto y muestra la portada del video.
+// modo "presentacion": sin marcas, con el video real.
+function htmlElemento(e, modo) {
   const o = e.o;
   const caja = `left:${o.x * 96}px;top:${o.y * 96}px;width:${o.w * 96}px;height:${o.h * 96}px;`;
-  // La vista previa se sirve junto a un enlace "visuales" a la carpeta de imagenes.
-  if (e.tipo === "imagen") return `<img src="visuales/${path.basename(e.archivo)}" style="position:absolute;${caja}">`;
+  if (e.tipo === "imagen") {
+    return `<img src="visuales/${path.basename(e.archivo)}" alt="${escapar(e.alt || "")}" style="position:absolute;${caja}">`;
+  }
+  if (e.tipo === "video") {
+    const portada = `visuales/${path.basename(e.portada)}`;
+    if (modo === "vista") return `<img src="${portada}" alt="" style="position:absolute;${caja}">`;
+    return `<video src="visuales/${path.basename(e.archivo)}" poster="${portada}" muted playsinline preload="metadata" ` +
+      `aria-label="Animación del ataque: spam atrapado, peso de cada experto y errores desde el ataque, mensaje a mensaje" ` +
+      `style="position:absolute;${caja}object-fit:contain;background:#${HEX.papel}"></video>`;
+  }
   if (e.tipo === "linea") {
     const borde = o.h === 0 ? "border-top" : "border-left";
     return `<div style="position:absolute;${caja}${borde}:1px solid #${o.color}"></div>`;
@@ -630,11 +658,12 @@ function htmlElemento(e) {
     return `<div style="position:absolute;${caja}${fondo}${borde}border-radius:${radio}"></div>`;
   }
   const alinear = { top: "flex-start", middle: "center", bottom: "flex-end" }[o.valign || "top"];
+  const familia = o.fontFace === SERIF ? `${SERIF}, 'Times New Roman', serif` : `${SANS}, 'Helvetica Neue', Helvetica, sans-serif`;
   const estilo = `${caja}display:flex;flex-direction:column;justify-content:${alinear};` +
-    `font-family:${o.fontFace};font-size:${o.fontSize * 96 / 72}px;color:#${o.color};` +
+    `font-family:${familia};font-size:${o.fontSize * 96 / 72}px;color:#${o.color};` +
     `line-height:${1.2 * (o.lineSpacingMultiple || 1)};text-align:${o.align || "left"};` +
     `letter-spacing:${(o.charSpacing || 0) * 96 / 72}px;font-weight:${o.bold ? 700 : 400};font-style:${o.italic ? "italic" : "normal"};` +
-    `outline:1px dashed rgba(255,0,0,.18);`;
+    (modo === "vista" ? "outline:1px dashed rgba(255,0,0,.18);" : "");
   let contenido = "";
   for (const c of e.corridas) {
     const co = c.options || {};
@@ -650,21 +679,322 @@ function htmlElemento(e) {
   return `<div style="position:absolute;${estilo}"><div>${contenido}</div></div>`;
 }
 
+// Contenido de una diapositiva. Lo del layout (regla del pie y numero) va primero, debajo del resto,
+// como en PowerPoint: asi el video de pantalla completa lo tapa.
+function htmlDiapositiva(d, modo) {
+  const layout = d.contenido
+    ? `<div style="position:absolute;left:${0.6 * 96}px;top:${6.88 * 96}px;width:${12.13 * 96}px;border-top:1px solid #${HEX.regla}"></div>` +
+      `<div style="position:absolute;left:${NUMERO.x * 96}px;top:${NUMERO.y * 96}px;width:${NUMERO.w * 96}px;text-align:right;` +
+      `font:${NUMERO.fontSize * 96 / 72}px ${SANS}, sans-serif;color:#${HEX.tenue}">${d.numero}</div>`
+    : "";
+  return layout + d.elementos.map((e) => htmlElemento(e, modo)).join("");
+}
+
 function escribirVistaPrevia(archivo) {
-  const diapositivas = vista.map((d) => {
-    const extras = d.contenido
-      ? `<div style="position:absolute;left:${0.6 * 96}px;top:${6.88 * 96}px;width:${12.13 * 96}px;border-top:1px solid #${HEX.regla}"></div>` +
-        `<div style="position:absolute;left:${NUMERO.x * 96}px;top:${NUMERO.y * 96}px;width:${NUMERO.w * 96}px;text-align:right;font:${NUMERO.fontSize * 96 / 72}px ${SANS};color:#${HEX.tenue}">${d.numero}</div>`
-      : "";
-    return `<section id="d${d.numero}" style="position:relative;width:1280px;height:720px;background:#${d.fondo};overflow:hidden;margin:0 0 24px">` +
-      d.elementos.map(htmlElemento).join("") + extras + "</section>";
-  });
+  const diapositivas = vista.map((d) =>
+    `<section id="d${d.numero}" style="position:relative;width:1280px;height:720px;background:#${d.fondo};overflow:hidden;margin:0 0 24px">` +
+    htmlDiapositiva(d, "vista") + "</section>");
   fs.writeFileSync(archivo, `<!doctype html><html><head><meta charset="utf-8"><title>Vista previa</title>` +
     `<style>body{margin:0;padding:24px;background:#888}</style></head><body>${diapositivas.join("\n")}</body></html>`);
+}
+
+// Presentacion para el navegador. Las diapositivas conservan su diseño fijo (papel y tinta, como
+// proyectadas); el marco alrededor (fondo, controles, notas) sigue el tema claro u oscuro del visor.
+// Escribe dos versiones: la completa, para abrir el archivo local, y si se pide, una sin el esqueleto
+// <html>/<head>/<body>, que es lo que espera la publicacion como Artifact (el esqueleto lo agrega ella).
+function escribirPresentacion(archivo, archivoSinEsqueleto) {
+  const total = vista.length;
+  const diapositivas = vista.map((d, i) =>
+    `<section class="diapositiva${i === 0 ? " activa" : ""}" id="d${d.numero}" role="group" aria-roledescription="diapositiva" ` +
+    `aria-label="${d.numero} de ${total}: ${escapar(d.nombre)}"${i === 0 ? "" : ' aria-hidden="true"'} style="background:#${d.fondo}">` +
+    htmlDiapositiva(d, "presentacion") + "</section>").join("\n");
+  const datos = JSON.stringify(vista.map((d) => ({ nombre: d.nombre, notas: d.notas }))).replace(/</g, "\\u003c");
+
+  const cabeza = `<title>Combinar o reentrenar</title>
+<style>
+/* Layout: un escenario 16:9 que escala la diapositiva de 1280x720 al espacio disponible; debajo, controles y notas. */
+:root {
+  --fondo: #E8E5DD; --superficie: #F7F5F0; --tinta: #1F2430; --tinta-2: #5A6274; --borde: #CFCBC1;
+  --acento: #2A78D6; --sombra: rgba(31, 36, 48, .14); --pantalla: #0E1014;
+  --sans: Arial, "Helvetica Neue", Helvetica, sans-serif; --serif: Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fondo: #121419; --superficie: #1C1F27; --tinta: #E6E8EE; --tinta-2: #A7AEBB; --borde: #333845;
+    --acento: #7DAFF0; --sombra: rgba(0, 0, 0, .45); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --fondo: #121419; --superficie: #1C1F27; --tinta: #E6E8EE; --tinta-2: #A7AEBB; --borde: #333845;
+  --acento: #7DAFF0; --sombra: rgba(0, 0, 0, .45); color-scheme: dark;
+}
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: var(--sans); }
+.pagina { padding-inline: 16px; padding-block: 12px 24px; max-width: 1440px; margin: 0 auto; display: grid; gap: 10px; }
+.cabecera { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.cabecera h1 { margin: 0; font: 400 1.25rem/1.2 var(--serif); text-wrap: balance; }
+.cabecera p { margin: 0; font-size: .8125rem; color: var(--tinta-2); }
+
+.escenario {
+  position: relative; width: min(100%, calc((100vh - 10.5rem) * 16 / 9)); width: min(100%, calc((100dvh - 10.5rem) * 16 / 9));
+  min-width: min(100%, 18rem); max-width: 100%; aspect-ratio: 16 / 9; margin-inline: auto; overflow: hidden;
+  background: var(--superficie); border-radius: 6px; box-shadow: 0 1px 2px var(--sombra), 0 10px 30px var(--sombra);
+  touch-action: pan-y;
+}
+.escenario:fullscreen { width: 100vw; height: 100vh; max-width: none; aspect-ratio: auto; border-radius: 0; background: var(--pantalla); }
+.lienzo {
+  position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px;
+  transform: translate(-50%, -50%) scale(var(--escala, .5)); transform-origin: center;
+}
+.diapositiva { position: absolute; inset: 0; overflow: hidden; opacity: 0; visibility: hidden; transition: opacity .35s ease, visibility 0s linear .35s; }
+.diapositiva.activa { opacity: 1; visibility: visible; transition: opacity .35s ease; }
+.diapositiva img { max-width: none; }
+.diapositiva video { cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .diapositiva, .diapositiva.activa { transition: none; } }
+
+.controles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.controles button {
+  font: 600 .875rem/1 var(--sans); color: var(--tinta); background: var(--superficie); border: 1px solid var(--borde);
+  border-radius: 6px; padding: .55rem .85rem; cursor: pointer;
+}
+.controles button:hover { border-color: var(--tinta-2); }
+.controles button:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.controles button:disabled { opacity: .45; cursor: default; }
+.controles button[aria-pressed="true"] { background: var(--tinta); color: var(--superficie); border-color: var(--tinta); }
+.posicion { display: grid; gap: 2px; min-width: 0; flex: 1 1 12rem; }
+.contador { font: 700 .875rem/1.2 var(--sans); font-variant-numeric: tabular-nums; }
+.nombre-actual { font-size: .8125rem; color: var(--tinta-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.extra { display: flex; gap: 8px; margin-left: auto; }
+.progreso { height: 3px; background: var(--borde); border-radius: 2px; overflow: hidden; }
+.progreso span { display: block; height: 100%; width: 0; background: var(--acento); transition: width .3s ease; }
+
+.notas { background: var(--superficie); border: 1px solid var(--borde); border-radius: 6px; padding: 14px 18px; display: grid; gap: 6px; }
+.notas h2 { margin: 0; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-2); }
+.notas .orador { font: 700 .8125rem/1.2 var(--sans); color: var(--acento); font-variant-numeric: tabular-nums; }
+.notas p { margin: 0; font-size: 1rem; line-height: 1.55; max-width: 75ch; }
+.atajos { margin: 0; font-size: .75rem; color: var(--tinta-2); }
+kbd { font: .75rem var(--sans); border: 1px solid var(--borde); border-bottom-width: 2px; border-radius: 4px; padding: 0 .3rem; background: var(--superficie); }
+@media (max-width: 560px) {
+  .extra { margin-left: 0; width: 100%; }
+  .extra button { flex: 1; }
+  .atajos { display: none; }
+}
+</style>`;
+
+  const cuerpo = `<main class="pagina">
+  <header class="cabecera">
+    <h1>Combinar o reentrenar</h1>
+    <p>Pablo Díaz y Ezequiel Martinez · Tópicos Avanzados en Ciencia de Datos (MCD210) · UdeSA</p>
+  </header>
+
+  <div class="escenario" id="escenario" aria-label="Presentación">
+    <div class="lienzo" id="lienzo">
+${diapositivas}
+    </div>
+  </div>
+
+  <div class="progreso" aria-hidden="true"><span id="barra"></span></div>
+
+  <nav class="controles" aria-label="Navegación de la presentación">
+    <button type="button" id="anterior" aria-label="Diapositiva anterior">← Anterior</button>
+    <button type="button" id="siguiente" aria-label="Diapositiva siguiente">Siguiente →</button>
+    <div class="posicion">
+      <span class="contador" id="contador" aria-live="polite">1 / ${total}</span>
+      <span class="nombre-actual" id="nombre-actual"></span>
+    </div>
+    <div class="extra">
+      <button type="button" id="boton-video" hidden>Pausar video</button>
+      <button type="button" id="boton-notas" aria-pressed="false" aria-controls="notas">Notas del orador</button>
+      <button type="button" id="boton-completa">Pantalla completa</button>
+    </div>
+  </nav>
+
+  <aside class="notas" id="notas" hidden>
+    <h2>Notas del orador</h2>
+    <span class="orador" id="orador"></span>
+    <p id="texto-notas"></p>
+  </aside>
+
+  <p class="atajos"><kbd>←</kbd> <kbd>→</kbd> cambiar de diapositiva · <kbd>N</kbd> notas · <kbd>F</kbd> pantalla completa · <kbd>P</kbd> pausa el video · en el celular, deslizar</p>
+</main>
+
+<script>
+(function () {
+  var DATOS = ${datos};
+  var total = DATOS.length;
+  var escenario = document.getElementById("escenario");
+  var lienzo = document.getElementById("lienzo");
+  var diapositivas = Array.prototype.slice.call(document.querySelectorAll(".diapositiva"));
+  var contador = document.getElementById("contador");
+  var nombreActual = document.getElementById("nombre-actual");
+  var barra = document.getElementById("barra");
+  var anterior = document.getElementById("anterior");
+  var siguiente = document.getElementById("siguiente");
+  var botonNotas = document.getElementById("boton-notas");
+  var botonCompleta = document.getElementById("boton-completa");
+  var botonVideo = document.getElementById("boton-video");
+  var panelNotas = document.getElementById("notas");
+  var orador = document.getElementById("orador");
+  var textoNotas = document.getElementById("texto-notas");
+  var indice = 0;
+
+  // Escala la diapositiva de 1280x720 para que entre entera en el escenario.
+  function ajustar() {
+    var caja = escenario.getBoundingClientRect();
+    var escala = Math.min(caja.width / 1280, caja.height / 720);
+    lienzo.style.setProperty("--escala", String(escala));
+  }
+  if (window.ResizeObserver) new ResizeObserver(ajustar).observe(escenario);
+  window.addEventListener("resize", ajustar);
+  ajustar();
+
+  // Las notas empiezan con "A · 1:15." u "B · 0:45 + preguntas.": orador y tiempo van aparte.
+  function separarNotas(notas) {
+    var partes = /^([AB]) · ([^.]+)\\.\\s*([\\s\\S]*)$/.exec(notas);
+    if (!partes) return { orador: "", texto: notas };
+    return { orador: "Orador " + partes[1] + " · " + partes[2], texto: partes[3] };
+  }
+
+  function videoDe(diapositiva) { return diapositiva.querySelector("video"); }
+
+  // El video no muestra controles nativos (taparian su subtitulo): se pausa con el boton, con P o con un clic.
+  function alternarVideo() {
+    var video = videoDe(diapositivas[indice]);
+    if (!video) return;
+    if (video.paused) {
+      var reproduccion = video.play();
+      if (reproduccion && reproduccion.catch) reproduccion.catch(function () {});
+    } else {
+      video.pause();
+    }
+  }
+  function actualizarBotonVideo() {
+    var video = videoDe(diapositivas[indice]);
+    botonVideo.hidden = !video;
+    if (video) botonVideo.textContent = video.paused ? "Reproducir video" : "Pausar video";
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".diapositiva video"), function (video) {
+    video.addEventListener("click", alternarVideo);
+    video.addEventListener("play", actualizarBotonVideo);
+    video.addEventListener("pause", actualizarBotonVideo);
+    video.addEventListener("ended", actualizarBotonVideo);
+  });
+
+  function mostrar(nuevo, actualizarDireccion) {
+    nuevo = Math.max(0, Math.min(total - 1, nuevo));
+    var anteriorVideo = videoDe(diapositivas[indice]);
+    if (anteriorVideo && nuevo !== indice) anteriorVideo.pause();
+    diapositivas[indice].classList.remove("activa");
+    diapositivas[indice].setAttribute("aria-hidden", "true");
+    indice = nuevo;
+    var actual = diapositivas[indice];
+    actual.classList.add("activa");
+    actual.removeAttribute("aria-hidden");
+
+    var video = videoDe(actual);
+    if (video) {
+      try { video.currentTime = 0; } catch (e) {}
+      var reproduccion = video.play();
+      if (reproduccion && reproduccion.catch) reproduccion.catch(function () {});
+    }
+
+    actualizarBotonVideo();
+    contador.textContent = (indice + 1) + " / " + total;
+    nombreActual.textContent = DATOS[indice].nombre;
+    barra.style.width = ((indice + 1) / total * 100) + "%";
+    anterior.disabled = indice === 0;
+    siguiente.disabled = indice === total - 1;
+    var notas = separarNotas(DATOS[indice].notas || "");
+    orador.textContent = notas.orador;
+    textoNotas.textContent = notas.texto;
+
+    if (actualizarDireccion) {
+      try { history.replaceState(null, "", "#" + (indice + 1)); } catch (e) {}
+    }
+  }
+
+  function alternarNotas() {
+    var abrir = panelNotas.hidden;
+    panelNotas.hidden = !abrir;
+    botonNotas.setAttribute("aria-pressed", String(abrir));
+  }
+
+  function alternarPantallaCompleta() {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (escenario.requestFullscreen) {
+        var pedido = escenario.requestFullscreen();
+        if (pedido && pedido.catch) pedido.catch(function () {});
+      }
+    } catch (e) {}
+  }
+
+  anterior.addEventListener("click", function () { mostrar(indice - 1, true); });
+  siguiente.addEventListener("click", function () { mostrar(indice + 1, true); });
+  botonNotas.addEventListener("click", alternarNotas);
+  botonCompleta.addEventListener("click", alternarPantallaCompleta);
+  botonVideo.addEventListener("click", alternarVideo);
+  if (!document.fullscreenEnabled) botonCompleta.hidden = true;
+  document.addEventListener("fullscreenchange", ajustar);
+
+  document.addEventListener("keydown", function (evento) {
+    if (evento.altKey || evento.ctrlKey || evento.metaKey) return;
+    var enBoton = evento.target && evento.target.tagName === "BUTTON";
+    var enVideo = false;
+    switch (evento.key) {
+      case "ArrowRight": case "PageDown":
+        if (enVideo) return;
+        mostrar(indice + 1, true); evento.preventDefault(); break;
+      case " ":
+        if (enBoton || enVideo) return;
+        mostrar(indice + 1, true); evento.preventDefault(); break;
+      case "ArrowLeft": case "PageUp":
+        if (enVideo) return;
+        mostrar(indice - 1, true); evento.preventDefault(); break;
+      case "Home": mostrar(0, true); evento.preventDefault(); break;
+      case "End": mostrar(total - 1, true); evento.preventDefault(); break;
+      case "n": case "N": alternarNotas(); break;
+      case "f": case "F": alternarPantallaCompleta(); break;
+      case "p": case "P": alternarVideo(); break;
+    }
+  });
+
+  // Deslizar en pantallas tactiles.
+  var inicioX = null;
+  escenario.addEventListener("pointerdown", function (evento) {
+    if (evento.pointerType === "touch") inicioX = evento.clientX;
+  });
+  escenario.addEventListener("pointerup", function (evento) {
+    if (inicioX === null) return;
+    var desplazamiento = evento.clientX - inicioX;
+    inicioX = null;
+    if (Math.abs(desplazamiento) > 50) mostrar(indice + (desplazamiento < 0 ? 1 : -1), true);
+  });
+
+  // "#9" en la direccion abre la diapositiva 9.
+  var pedida = parseInt((location.hash || "").replace("#", ""), 10);
+  mostrar(isNaN(pedida) ? 0 : pedida - 1, false);
+})();
+</script>`;
+
+  fs.writeFileSync(archivo, `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+${cabeza}
+</head>
+<body>
+${cuerpo}
+</body>
+</html>
+`);
+  if (archivoSinEsqueleto) fs.writeFileSync(archivoSinEsqueleto, cabeza + "\n" + cuerpo + "\n");
 }
 
 pres.writeFile({ fileName: SALIDA_PPTX }).then(async () => {
   await applyTheme(SALIDA_PPTX, THEME);
   if (SALIDA_HTML) escribirVistaPrevia(SALIDA_HTML);
+  if (SALIDA_PRESENTACION) escribirPresentacion(SALIDA_PRESENTACION, SALIDA_ARTIFACT);
   console.log("escrito:", SALIDA_PPTX, vista.length, "diapositivas");
 });
