@@ -1,4 +1,4 @@
-// Genera la presentacion "Combinar o reentrenar" en estilo editorial (18 diapositivas, 20 minutos).
+// Genera la presentacion "Combinar o reentrenar" en estilo editorial (19 diapositivas, 20 minutos).
 //
 // Una misma descripcion produce tres salidas:
 //   - el .pptx, para abrir en PowerPoint o importar en Canva (texto y formas quedan editables);
@@ -465,10 +465,64 @@ pres.addSection({ title: S2 });
   s.addNotes("A · 1:15 (y pasa a B). El porqué. Hedge no había apostado todo al mejor del momento: al llegar el ataque tenía el peso en tercios. Cuando el ataque rompe a Naive Bayes, el peso migra al estructural, que mira formato y no palabras. Pase: «Esto con todas las etiquetas. Ezequiel muestra qué pasa cuando escasean.»");
 }
 
-// --- 11. Hallazgo 2: el cruce ------------------------------------------------
+// --- 11. Como medimos la escasez de etiquetas -----------------------------------
+// Cuatro filas de 20 mensajes seguidos: en tinta, los que el usuario reporta. El patron regular es
+// ilustrativo; en el experimento se sortea que mensajes se reportan.
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
-  encabezado(s, "HALLAZGO 2 · ¿CUÁNTA ETIQUETA HACE FALTA?", "Con pocas etiquetas, combinar le gana a reentrenar",
+  encabezado(s, "HALLAZGO 2 · ¿CUÁNTA ETIQUETA HACE FALTA?", "Cómo medimos la escasez de etiquetas",
+    "El usuario reporta solo algunos mensajes. Probamos cuatro niveles, de todos a 1 de cada 20.", 2);
+  const niveles = [
+    ["todos", 1, "305"],
+    ["1 de cada 2", 2, "≈ 152"],
+    ["1 de cada 5", 5, "≈ 61"],
+    ["1 de cada 20", 20, "≈ 15"],
+  ];
+  const xPuntos = 2.25, paso = 0.24, diametro = 0.16;
+  texto(s, "20 MENSAJES SEGUIDOS DEL STREAM", { x: xPuntos, y: 2.1, w: 4.8, h: 0.25, fontSize: 10, bold: true,
+    color: HEX.tinta2, charSpacing: 1 });
+  texto(s, "SPAMS ATACADOS CON ETIQUETA", { x: 7.2, y: 1.98, w: 1.6, h: 0.4, fontSize: 9, bold: true,
+    color: HEX.tinta2, charSpacing: 1 });
+  niveles.forEach(([nombre, cada, spams], fila) => {
+    const y = 2.6 + fila * 0.72;
+    texto(s, nombre, { x: 0.6, y: y - 0.06, w: 1.55, h: 0.3, fontSize: 15, bold: true });
+    for (let i = 0; i < 20; i++) {
+      const x = xPuntos + i * paso;
+      if (i % cada === 0) circulo(s, x, y, diametro, HEX.tinta, "reportado " + nombre + " " + (i + 1));
+      else circulo(s, x, y, diametro, null, "sin reportar " + nombre + " " + (i + 1), HEX.tenue);
+    }
+    texto(s, spams, { x: 7.2, y: y - 0.1, w: 1.5, h: 0.36, fontSize: 20, bold: true,
+      color: HEX.tinta });
+  });
+  regla(s, 0.6, 5.5, 8.1, 0);
+  texto(s, "Con 1 de cada 20, reentrenar tiene unos 15 ejemplos para aprender 800 palabras alteradas.", {
+    x: 0.6, y: 5.68, w: 8.1, h: 0.8, fontSize: 20, fontFace: SERIF });
+
+  regla(s, 9.0, 2.05, 0, 4.4);
+  const reglas = [
+    "Cada mensaje se reporta con probabilidad ρ. Hedge y SGD ven exactamente los mismos reportes.",
+    "Todos predicen siempre y todo error cuenta, aunque no se reporte. Solo aprenden de los mensajes reportados.",
+    "SGD aprende de cada reporte tal cual. Hedge multiplica por 1/ρ cada error que ve y achica η para no sobrerreaccionar.",
+  ];
+  const alturas = [0.95, 1.2, 1.2];
+  let yRegla = 2.05;
+  reglas.forEach((contenido, i) => {
+    texto(s, String(i + 1), { x: 9.35, y: yRegla - 0.04, w: 0.35, h: 0.45, fontSize: 22, fontFace: SERIF, color: HEX.hedge });
+    texto(s, contenido, { x: 9.75, y: yRegla, w: 3.0, h: alturas[i], fontSize: 14 });
+    yRegla += alturas[i] + 0.3;
+  });
+  fuente(s, "Ilustrativo: en el experimento, qué mensajes se reportan se sortea. Para cada nivel, 20 órdenes del corpus × 5 sorteos de etiquetas.");
+  s.addNotes("B · 0:50. Cómo armamos la prueba. Cada fila son 20 mensajes seguidos; en negro, los que el usuario reporta. " +
+    "Probamos cuatro niveles: todos, 1 de cada 2, 1 de cada 5 y 1 de cada 20. Hedge y SGD ven exactamente los mismos reportes. " +
+    "Los errores se cuentan siempre: si un spam se escapa, el usuario lo sufre aunque no lo reporte. Solo cambia de qué aprende cada uno: " +
+    "SGD, de cada reporte tal cual; Hedge multiplica por 1/ρ cada error que ve y achica η para no sobrerreaccionar. " +
+    "El dato clave: con 1 de cada 20 hay unos 15 spams atacados con etiqueta.");
+}
+
+// --- 12. Hallazgo 2: el cruce ------------------------------------------------
+{
+  const s = nuevaDiapositiva("CONTENIDO", S2);
+  encabezado(s, "HALLAZGO 2", "Con pocas etiquetas, combinar le gana a reentrenar",
     "Errores en la mitad atacada, según cuántos mensajes reporta el usuario.", 2);
   imagen(s, "06_cruce_etiquetas.png", 0.45, 1.95, 7.6, 4.85,
     "Errores según la fracción de mensajes etiquetados. Con todas las etiquetas SGD comete 73 y Hedge 133; con 1 de cada 20, SGD 210 y Hedge 189, frente a 190 del estático.");
@@ -476,11 +530,11 @@ pres.addSection({ title: S2 });
   cifra(s, "210 > 190", HEX.sgd, "errores: con tan pocas etiquetas, SGD termina peor que no adaptarse", 8.45, 4.0, 4.3, 44);
   texto(s, "Con 1 de cada 5 o más, reentrenar gana en al menos 18 de 20 semillas.", { x: 8.45, y: 5.95, w: 4.3, h: 0.6,
     fontSize: 13, color: HEX.tinta2 });
-  fuente(s, "Barrido de ρ, la probabilidad de ver la etiqueta. Hedge usa el estimador ℓ/ρ con η_ρ = √ρ · η_T. " + FUENTE_SEMILLAS.split(".")[0] + ".");
-  s.addNotes("B · 1:30. Respuesta a la pregunta 2. Con todas las etiquetas, reentrenar gana claro: 73 contra 133. A medida que el usuario reporta menos, SGD se degrada mucho más rápido. Las curvas se cruzan entre 1 de cada 5 y 1 de cada 20: ahí Hedge gana en 15 de 20 semillas, y SGD termina peor que no adaptarse.");
+  fuente(s, "Para cada nivel, 20 órdenes del corpus × 5 sorteos de etiquetas. Hedge usa η_ρ = √ρ · η_T.");
+  s.addNotes("B · 1:10. Respuesta a la pregunta 2. Con todas las etiquetas, reentrenar gana claro: 73 contra 133. A medida que el usuario reporta menos, SGD se degrada mucho más rápido. Las curvas se cruzan entre 1 de cada 5 y 1 de cada 20: ahí Hedge gana en 15 de 20 semillas, y SGD termina peor que no adaptarse. Matiz: con 1 de cada 20, Hedge apenas empata con el estático (189 contra 190); no recupera, pero no empeora.");
 }
 
-// --- 12. No es un artefacto --------------------------------------------------
+// --- 13. No es un artefacto --------------------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 2", "No es un artefacto de cómo se pondera",
@@ -497,10 +551,10 @@ pres.addSection({ title: S2 });
   texto(s, "Lo que sí paga Hedge es varianza: con ρ = 0,05 cada observación pesa ≈ 4,5 veces más.", { x: 8.45, y: 5.8, w: 4.3, h: 0.6,
     fontSize: 13, color: HEX.tinta2 });
   fuente(s, FUENTE_SEMILLAS);
-  s.addNotes("B · 1:15. Un revisor nos objetó que SGD perdía por no reponderar como Hedge. Lo probamos: reponderar lo empeora, de 210 a 240 o 323 errores. La razón es de conteo: Hedge aprende 5 pesos; reentrenar necesita un peso por cada palabra nueva. Lo que sí sufre Hedge es la varianza del estimador.");
+  s.addNotes("B · 1:05. Un revisor nos objetó que SGD perdía por no reponderar como Hedge. Lo probamos: reponderar lo empeora, de 210 a 240 o 323 errores. La razón es de conteo: Hedge aprende 5 pesos; reentrenar necesita un peso por cada palabra nueva. Lo que sí sufre Hedge es la varianza del estimador.");
 }
 
-// --- 13. Hallazgo 3: deterministico contra randomizado -----------------------
+// --- 14. Hallazgo 3: deterministico contra randomizado -----------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 3 · LA TEORÍA, CON PRECISIÓN", "La cota de la teoría no es la del voto pesado", null, 3);
@@ -518,7 +572,7 @@ pres.addSection({ title: S2 });
   s.addNotes("B · 1:30. Primera precisión sobre la teoría. Las slides 71 y 73 presentan juntos el voto pesado y la cota, pero la cota es del Hedge randomizado. Construimos un adversario que simula al determinístico y le etiqueta lo contrario: su regret crece lineal, T/2. El randomizado queda en 14, bajo su cota de 37. En el stream real el determinístico anda mejor: la diferencia es de peor caso.");
 }
 
-// --- 14. Cada cota con su eta ------------------------------------------------
+// --- 15. Cada cota con su eta ------------------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 3", "Cada cota vale para su tasa de aprendizaje",
@@ -536,7 +590,7 @@ pres.addSection({ title: S2 });
   s.addNotes("B · 1:15. Segunda precisión. Hay dos cotas y cada una vale para su propia tasa de aprendizaje. Las dos se cumplen en las 20 semillas. La small-loss da la mitad de regret, pero requiere saber cuántos errores comete el mejor experto, algo que bajo ataque no sabemos. Notar cómo esa cota cambia de pendiente con el ataque.");
 }
 
-// --- 15. Hallazgo 4: lecciones de metodo -------------------------------------
+// --- 16. Hallazgo 4: lecciones de metodo -------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S2);
   encabezado(s, "HALLAZGO 4 · LECCIONES DE MÉTODO", "Tres cosas que sirven fuera de este trabajo", null, 4);
@@ -562,7 +616,7 @@ pres.addSection({ title: S2 });
 const S3 = "3 · Cierre";
 pres.addSection({ title: S3 });
 
-// --- 16. Cuando combinar y cuando reentrenar ---------------------------------
+// --- 17. Cuando combinar y cuando reentrenar ---------------------------------
 {
   const s = nuevaDiapositiva("OSCURA", S3);
   nombrar("Cuándo combinar y cuándo reentrenar");
@@ -586,7 +640,7 @@ pres.addSection({ title: S3 });
   s.addNotes("B · 1:00. La conclusión práctica. Lowd y Meek tenían razón a medias: reentrenar seguido funciona si hay etiquetas seguido. Cuando escasean, combinar es más robusto porque tiene muchos menos parámetros. Cerrar con la pregunta abierta, aclarando que no la probamos.");
 }
 
-// --- 17. Limitaciones ---------------------------------------------------------
+// --- 18. Limitaciones ---------------------------------------------------------
 {
   const s = nuevaDiapositiva("CONTENIDO", S3);
   encabezado(s, "LIMITACIONES", "Lo que este trabajo no muestra", null, 0);
@@ -606,10 +660,10 @@ pres.addSection({ title: S3 });
     texto(s, d, { x, y: y + 0.95, w: 3.8, h: 0.95, fontSize: 15, color: HEX.tinta2 });
   });
   fuente(s, "Detalle en la sección de limitaciones del paper.");
-  s.addNotes("B · 0:45. Mencionar rápido, sin leer todas. Las dos más importantes: el drift es sintético y el experto robusto lo es para este ataque en particular.");
+  s.addNotes("B · 0:35. Mencionar rápido, sin leer todas. Las dos más importantes: el drift es sintético y el experto robusto lo es para este ataque en particular.");
 }
 
-// --- 18. Preguntas -------------------------------------------------------------
+// --- 19. Preguntas -------------------------------------------------------------
 {
   const s = nuevaDiapositiva("OSCURA", S3);
   nombrar("Preguntas");

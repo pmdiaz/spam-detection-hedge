@@ -23,7 +23,7 @@ DIAPOSITIVAS = [
              "Las palabras de la derecha son reales: así queda un spam después de nuestro ataque.",
          ],
          pase="«Empecemos por el problema.»",
-         datos=[("Duración total", "20 min, 18 diapositivas"), ("Orador A", "diapositivas 1 a 10"), ("Orador B", "diapositivas 11 a 18")],
+         datos=[("Duración total", "20 min, 19 diapositivas"), ("Orador A", "diapositivas 1 a 10"), ("Orador B", "diapositivas 11 a 19")],
          refs=["Paper y código: github.com/pmdiaz/spam-detection-hedge"],
          preguntas=[]),
     dict(n=2, sec=1, orador="A", seg=75, titulo="Un spammer que aprende a esquivar el filtro",
@@ -142,21 +142,39 @@ DIAPOSITIVAS = [
          refs=["Paper Fig. 1", "Paper §5"],
          preguntas=[("¿Hedge se olvida de lo que pasó antes?",
                      "No: compite contra el mejor experto fijo de todo el horizonte. Para drift general existe Fixed-Share (Herbster & Warmuth, 1998).")]),
-    dict(n=11, sec=2, orador="B", seg=90, titulo="Con pocas etiquetas, combinar le gana a reentrenar",
+    dict(n=11, sec=2, orador="B", seg=50, titulo="Cómo medimos la escasez de etiquetas",
+         mensaje="Mismo experimento, menos reportes: los dos ven los mismos mensajes etiquetados y los errores se cuentan siempre.",
+         guion=[
+             "Cada fila son 20 mensajes seguidos; en negro, los que el usuario reporta. Probamos cuatro niveles: todos, 1 de cada 2, 1 de cada 5 y 1 de cada 20.",
+             "Aclarar que el dibujo es ilustrativo: en el experimento, qué mensajes se reportan se sortea.",
+             "Hedge y SGD ven exactamente los mismos reportes, así que ninguno gana por suerte.",
+             "Los errores se cuentan siempre: si un spam se escapa, el usuario lo sufre aunque no lo reporte. Solo cambia de qué aprende cada uno.",
+             "SGD aprende de cada reporte tal cual. Hedge multiplica por 1/ρ cada error que ve y achica η para no sobrerreaccionar.",
+             "Cerrar con el dato de la derecha: con 1 de cada 20 hay unos 15 spams atacados con etiqueta.",
+         ],
+         pase="«¿Qué le pasa a cada uno cuando bajan los reportes?»",
+         datos=[("Niveles (ρ)", "1 · 0,5 · 0,2 · 0,05"), ("Spams atacados con etiqueta", "305 · ≈152 · ≈61 · ≈15"),
+                ("η de Hedge", "0,054 · 0,038 · 0,024 · 0,012"), ("Repeticiones", "20 órdenes × 5 sorteos de etiquetas por nivel")],
+         refs=["src/algoritmos.py, sortear_rondas_con_etiqueta", "Paper §5, «Etiqueta escasa»"],
+         preguntas=[("¿Por qué Hedge multiplica por 1/ρ?",
+                     "En cada reporte ve los errores de los 5 expertos, así que dividirlos todos por ρ no cambia cuál es mejor: equivale a dar pasos más grandes en los mensajes que sí ve. Achicar η por √ρ evita que esos pasos sean demasiado bruscos, y así la cota sigue hablando de errores reales."),
+                    ("¿Por qué no sortean qué mensajes reporta cada uno por separado?",
+                     "Para que la comparación no dependa de a quién le tocaron más o mejores etiquetas. Los dos usan la misma función con la misma semilla.")]),
+    dict(n=12, sec=2, orador="B", seg=70, titulo="Con pocas etiquetas, combinar le gana a reentrenar",
          mensaje="Reentrenar necesita etiquetas frecuentes; cuando escasean, combinar es más robusto.",
          guion=[
-             "Explicar el eje: cuántos mensajes reporta el usuario, de todos a 1 de cada 20.",
+             "El eje son los cuatro niveles de la diapositiva anterior.",
              "Con todas las etiquetas, reentrenar gana claramente: 73 contra 133.",
              "A medida que bajan las etiquetas, SGD se degrada mucho más rápido que Hedge.",
              "Las curvas se cruzan entre 1 de cada 5 y 1 de cada 20: en la zona azul, Hedge gana en 15 de 20 semillas y SGD termina peor que no adaptarse.",
+             "Matiz: con 1 de cada 20, Hedge apenas empata con el estático (189 contra 190). No recupera, pero no empeora.",
          ],
          pase="«Nos objetaron que esto podía ser un artefacto. Lo probamos.»",
          datos=[("Hedge", "133 · 142 · 157 · 189 errores"), ("SGD online", "73 · 100 · 141 · 210 errores"), ("Etiquetas", "100% · 50% · 20% · 5%"),
                 ("Gana Hedge", "0 · 0 · 2 · 15 de 20 semillas")],
          refs=["Paper Fig. 3", "Paper §5, «Etiqueta escasa»"],
-         preguntas=[("¿Cómo modelan la escasez?",
-                     "Cada mensaje se etiqueta con probabilidad ρ. Hedge usa el estimador ℓ/ρ con η = √ρ · η_T. Hedge y SGD ven exactamente las mismas rondas etiquetadas.")]),
-    dict(n=12, sec=2, orador="B", seg=75, titulo="No es un artefacto de cómo se pondera",
+         preguntas=[]),
+    dict(n=13, sec=2, orador="B", seg=65, titulo="No es un artefacto de cómo se pondera",
          mensaje="Reponderar a SGD lo empeora; la ventaja de Hedge es estructural.",
          guion=[
              "Contar la objeción del revisor: SGD perdería por no reponderar sus ejemplos como hace Hedge.",
@@ -169,8 +187,8 @@ DIAPOSITIVAS = [
                 ("Estático", "190"), ("Factor de varianza", "1/√0,05 ≈ 4,5")],
          refs=["Auer et al. (2002), estimador ℓ/ρ", "src/reponderacion_sgd.py", "Paper §5"],
          preguntas=[("¿Por qué a Hedge sí le sirve dividir por ρ?",
-                     "Porque le evita sesgo al comparar expertos entre sí. A SGD, multiplicar el peso solo le agranda los pasos.")]),
-    dict(n=13, sec=2, orador="B", seg=90, titulo="La cota de la teoría no es la del voto pesado",
+                     "No cambia cómo se comparan los expertos: en cada reporte ve los errores de los 5, y dividirlos todos por ρ solo agranda el paso. Con η achicado por √ρ, el paso neto crece 1/√ρ ≈ 4,5 veces, que es justo lo que probamos en SGD con peso 1/√ρ: lo empeoró de 210 a 240.")]),
+    dict(n=14, sec=2, orador="B", seg=90, titulo="La cota de la teoría no es la del voto pesado",
          mensaje="La garantía vale para el Hedge que sortea, no para el que vota.",
          guion=[
              "En clase, las slides 71 y 73 presentan juntos el voto pesado y la cota.",
@@ -185,7 +203,7 @@ DIAPOSITIVAS = [
          refs=["Freund & Schapire (1997)", "Cesa-Bianchi & Lugosi (2006)", "Paper §3.1 y Fig. 2B"],
          preguntas=[("Si el determinístico anda mejor en la práctica, ¿por qué importa?",
                      "Porque solo el randomizado tiene garantía contra un adversario. En datos benignos se puede usar el determinístico, pero sin cobertura de peor caso.")]),
-    dict(n=14, sec=2, orador="B", seg=75, titulo="Cada cota vale para su tasa de aprendizaje",
+    dict(n=15, sec=2, orador="B", seg=75, titulo="Cada cota vale para su tasa de aprendizaje",
          mensaje="Hay dos cotas y cada una vale solo para su propio η.",
          guion=[
              "La cota de peor caso vale para η sintonizado por T; la cota small-loss, para η sintonizado por la pérdida del mejor experto.",
@@ -199,7 +217,7 @@ DIAPOSITIVAS = [
          refs=["Freund & Schapire (1997), Teorema 2 y Lema 4", "Paper §2 y Fig. 2A"],
          preguntas=[("¿Por qué la cota de la slide es el doble?",
                      "Es una versión conservadora. La derivación por el lema de Hoeffding da √(T ln K / 2) en t = T.")]),
-    dict(n=15, sec=2, orador="B", seg=90, titulo="Tres cosas que sirven fuera de este trabajo",
+    dict(n=16, sec=2, orador="B", seg=90, titulo="Tres cosas que sirven fuera de este trabajo",
          mensaje="Medir bien, validar lo que importa y asegurarse de que algún experto sobreviva.",
          guion=[
              "La accuracy engaña con datos desbalanceados.",
@@ -212,7 +230,7 @@ DIAPOSITIVAS = [
          refs=["Paper §5 y §6", "docs/plan.md §4"],
          preguntas=[("¿Por qué el estático es Naive Bayes y no el que elige la validación cruzada?",
                      "La CV habría elegido al estructural en 6 de 20 semillas. El ataque se construye contra un filtro bayesiano, así que el estático tiene que ser ese filtro.")]),
-    dict(n=16, sec=3, orador="B", seg=60, titulo="Cuándo combinar y cuándo reentrenar",
+    dict(n=17, sec=3, orador="B", seg=60, titulo="Cuándo combinar y cuándo reentrenar",
          mensaje="Lowd y Meek tenían razón a medias: reentrenar seguido funciona si hay etiquetas seguido.",
          guion=[
              "Con etiquetas abundantes, reentrenar.",
@@ -223,7 +241,7 @@ DIAPOSITIVAS = [
          pase="«Y lo que este trabajo no muestra.»",
          datos=[("Con todas las etiquetas", "SGD 73 · Hedge 133 errores"), ("Con 5% de etiquetas", "Hedge 189 · SGD 210 errores")],
          refs=["Paper §6 y Conclusión"], preguntas=[]),
-    dict(n=17, sec=3, orador="B", seg=45, titulo="Lo que este trabajo no muestra",
+    dict(n=18, sec=3, orador="B", seg=35, titulo="Lo que este trabajo no muestra",
          mensaje="Los límites son reales, y los más importantes son dos.",
          guion=[
              "No leer las seis: mencionar las dos principales.",
@@ -233,7 +251,7 @@ DIAPOSITIVAS = [
          pase="«Gracias. ¿Preguntas?»",
          datos=[("Adversario adaptativo", "degradaría √T a T^(2/3)")],
          refs=["Cesa-Bianchi, Dekel & Shamir (2013)", "Paper §6"], preguntas=[]),
-    dict(n=18, sec=3, orador="B", seg=15, titulo="¿Preguntas?",
+    dict(n=19, sec=3, orador="B", seg=15, titulo="¿Preguntas?",
          mensaje="Abrir preguntas.",
          guion=["Agradecer y abrir preguntas. Repartir las respuestas según el tema de cada uno."],
          pase="",
@@ -508,7 +526,7 @@ h1 {{ font-size: clamp(28px, 4vw, 38px); line-height: 1.15; margin: 0; font-weig
 
 <script>
 (function () {{
-  var CLAVE = "guion-combinar-reentrenar-v3"; // v3: mazo de 18 diapositivas, otra numeracion
+  var CLAVE = "guion-combinar-reentrenar-v4"; // v4: mazo de 19 diapositivas, otra numeracion
   var estado = {{ filtro: "todos", ensayadas: [] }};
   try {{
     var guardado = JSON.parse(localStorage.getItem(CLAVE) || "null");
