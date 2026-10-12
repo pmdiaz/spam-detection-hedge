@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jev contra el spammer adaptativo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --fondo:#EDF0F4; --papel:#FFFFFF; --tinta:#18213A; --tenue:#5A6378; --linea:#D3D8E1;
+  --ataque:#D3266B; --ataque-suave:#FBE3EC;
+  --c-estatico:#C77D00; --c-sgd:#5E6E86; --c-hedge5:#8A5CD0; --c-hedge6:#0B8F82; --c-jev:#3348D4;
+  --spam:#D3266B; --ham:#5E6E86;
+  --burbuja:#E4E8EF;
+  --f-titulo:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-cuerpo:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-sms:-apple-system, "SF Pro Text", Roboto, "Segoe UI", system-ui, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --fondo:#141A29; --papel:#1C2336; --tinta:#E7EAF2; --tenue:#9AA3B8; --linea:#2E3750;
+    --ataque:#FF5C93; --ataque-suave:#4A1E31;
+    --c-estatico:#F0A92E; --c-sgd:#93A1B8; --c-hedge5:#B48CF2; --c-hedge6:#2FC4B3; --c-jev:#7D8CFF;
+    --spam:#FF5C93; --ham:#93A1B8; --burbuja:#2A3248;
+  }
+}
+:root[data-theme="dark"]{
+  --fondo:#141A29; --papel:#1C2336; --tinta:#E7EAF2; --tenue:#9AA3B8; --linea:#2E3750;
+  --ataque:#FF5C93; --ataque-suave:#4A1E31;
+  --c-estatico:#F0A92E; --c-sgd:#93A1B8; --c-hedge5:#B48CF2; --c-hedge6:#2FC4B3; --c-jev:#7D8CFF;
+  --spam:#FF5C93; --ham:#93A1B8; --burbuja:#2A3248;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--fondo);color:var(--tinta);font-family:var(--f-cuerpo);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.simulado{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:#B00020;color:#fff;padding:.6rem 1.2rem;font-weight:700;text-align:center;font-size:.95rem}
+main{max-width:1120px;margin:0 auto;padding:0 1.25rem 4rem}
+h1,h2,h3{font-family:var(--f-titulo);line-height:1.1;margin:0;letter-spacing:-.015em}
+h1{font-size:clamp(2.3rem,5.4vw,4.1rem);font-weight:800;max-width:14ch}
+h2{font-size:clamp(1.55rem,3vw,2.15rem);font-weight:700;max-width:28ch}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:.6rem 0;max-width:68ch}
+.tenue{color:var(--tenue)}
+.chico{font-size:.88rem}
+section{padding:3.2rem 0 0}
+.lead{font-size:1.15rem;color:var(--tenue);max-width:58ch;margin-top:1rem}
+
+/* Hero */
+.hero{display:grid;grid-template-columns:1fr minmax(320px,440px);gap:3rem;align-items:center;padding-top:3.5rem}
+.telefono{background:var(--papel);border:1px solid var(--linea);border-radius:28px;padding:1.4rem 1.3rem 1.2rem;box-shadow:0 18px 40px -24px rgba(24,33,58,.45)}
+.remitente{font-family:var(--f-sms);font-size:.8rem;color:var(--tenue);text-align:center;margin-bottom:.8rem}
+.burbuja{font-family:var(--f-sms);background:var(--burbuja);border-radius:20px 20px 20px 6px;padding:.8rem 1rem;font-size:.98rem;line-height:1.4;min-height:6.5em;word-break:break-word}
+.burbuja .cambio{background:var(--ataque-suave);color:var(--ataque);font-weight:700;border-radius:4px;padding:0 .12em}
+.medidor{margin-top:1rem}
+.medidor-fila{display:grid;grid-template-columns:6.4rem 1fr 6rem;gap:.6rem;align-items:center;margin:.55rem 0;font-size:.9rem}
+.pista{position:relative;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--linea) 0 50%,var(--ataque-suave) 50% 100%)}
+.pista .umbral{position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--tenue);opacity:.6}
+.marca{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);transition:left .6s cubic-bezier(.3,.7,.2,1)}
+.marca.antes{border:2.5px solid currentColor;background:var(--papel)}
+.marca.despues{background:currentColor}
+.valor{font-variant-numeric:tabular-nums;text-align:right;color:var(--tenue);font-size:.85rem}
+.controles-galeria{display:flex;justify-content:space-between;align-items:center;margin-top:.9rem;gap:.5rem}
+.leyenda-medidor{font-size:.78rem;color:var(--tenue)}
+button{font:inherit;font-size:.9rem;border:1px solid var(--linea);background:var(--papel);color:var(--tinta);border-radius:999px;padding:.4rem .95rem;cursor:pointer}
+button:hover{border-color:var(--tenue)}
+button[aria-pressed="true"]{background:var(--tinta);color:var(--papel);border-color:var(--tinta)}
+:focus-visible{outline:3px solid var(--c-jev);outline-offset:2px}
+.respuesta{font-family:var(--f-titulo);font-size:1.3rem;font-weight:500;margin-top:1.6rem;max-width:30ch;line-height:1.3}
+
+/* Lienzos */
+.panel{background:var(--papel);border:1px solid var(--linea);border-radius:14px;padding:1.2rem 1.2rem 1rem;margin-top:1.2rem}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.lienzo{position:relative;height:330px}
+.lienzo.bajo{height:250px}
+.lienzo.alto{height:380px}
+.barra-control{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;margin-top:.8rem}
+.leyenda{display:flex;flex-wrap:wrap;gap:.3rem 1.1rem;font-size:.86rem;color:var(--tenue);margin-top:.5rem}
+.leyenda span::before{content:"";display:inline-block;width:.8em;height:.8em;border-radius:3px;margin-right:.35em;vertical-align:-.05em;background:var(--c)}
+.nota{font-size:.85rem;color:var(--tenue);margin-top:.6rem}
+
+/* Selectiva */
+.deslizadores{display:grid;grid-template-columns:1fr 1fr;gap:1rem 2rem;margin-top:1rem}
+.deslizadores label{font-size:.9rem;display:block}
+input[type=range]{width:100%;accent-color:var(--c-jev)}
+.cifras{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:1rem}
+.cifra b{display:block;font-family:var(--f-titulo);font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums}
+.cifra span{font-size:.85rem;color:var(--tenue)}
+
+table{width:100%;border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+th,td{padding:.55rem .5rem;text-align:right;border-bottom:1px solid var(--linea)}
+th:first-child,td:first-child{text-align:left}
+thead th{font-weight:700;color:var(--tenue);font-size:.84rem}
+thead th[colspan]{text-align:center}
+.punto{display:inline-block;width:.7em;height:.7em;border-radius:50%;margin-right:.45em;background:var(--c)}
+.tabla-envoltorio{overflow-x:auto}
+footer{margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--linea);font-size:.88rem;color:var(--tenue)}
+footer p{max-width:90ch}
+
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr;gap:2rem}
+  .dos{grid-template-columns:1fr}
+  .cifras{grid-template-columns:repeat(2,1fr)}
+  .deslizadores{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.marca{transition:none}}
+</style>
+</head>
+<body>
+<div class="simulado" id="franja-simulado" hidden>Vista previa con un Jev SIMULADO: los números de Jev son ruido de prueba, no resultados. Corré experimento_jev.py con TYPESAFE_API_KEY.</div>
+<main>
+
+<header class="hero">
+  <div>
+    <h1>¿Puede un spammer engañar a Jev?</h1>
+    <p class="lead">El ataque de ofuscación que hunde a Naive Bayes, ahora contra un modelo que nunca vio este corpus. Jev entra como sexto experto de Hedge, congelado y sin entrenamiento.</p>
+    <p class="respuesta" id="respuesta-hero"></p>
+  </div>
+  <div class="telefono" aria-label="Mensaje de spam atacado">
+    <div class="remitente" id="remitente">Spam atacado</div>
+    <div class="burbuja" id="burbuja"></div>
+    <div class="medidor" id="medidor"></div>
+    <div class="controles-galeria">
+      <span class="leyenda-medidor">○ original &nbsp; ● atacado &nbsp; | umbral 0,5</span>
+      <button id="otro">Otro mensaje</button>
+    </div>
+  </div>
+</header>
+
+<section>
+  <h2>Cuánto spam atrapa cada uno después del ataque</h2>
+  <p class="tenue">Spam Caught en la mitad atacada del stream, promedio sobre <span class="n-semillas"></span> semillas. Las líneas finas marcan el rango entre el percentil 10 y el 90.</p>
+  <div class="panel"><div class="lienzo bajo"><canvas id="g-sc"></canvas></div></div>
+</section>
+
+<section>
+  <h2>El mismo mensaje, antes y después de ofuscarlo</h2>
+  <p class="tenue">Cada línea es un spam de la mitad atacada (semilla 0): a la izquierda la probabilidad de spam del mensaje original, a la derecha la del atacado. Si la línea cruza el 0,5, el mensaje se escapa.</p>
+  <div class="dos">
+    <div class="panel"><h3>Naive Bayes, el filtro atacado</h3><div class="lienzo"><canvas id="g-pendiente-nb"></canvas></div><p class="nota" id="nota-nb"></p></div>
+    <div class="panel"><h3>Jev, zero-shot</h3><div class="lienzo"><canvas id="g-pendiente-jev"></canvas></div><p class="nota" id="nota-jev"></p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Cómo separa spam de ham cada modelo</h2>
+  <p class="tenue">Distribución de la probabilidad de spam, con el spam hacia arriba y el ham hacia abajo. Un buen filtro deja las dos masas en extremos opuestos.</p>
+  <div class="barra-control" role="group" aria-label="Mitad del stream">
+    <button data-mitad="primera" aria-pressed="false">Antes del ataque</button>
+    <button data-mitad="segunda" aria-pressed="true">Después del ataque</button>
+  </div>
+  <div class="dos">
+    <div class="panel"><h3>Naive Bayes</h3><div class="lienzo"><canvas id="g-hist-nb"></canvas></div></div>
+    <div class="panel"><h3>Jev</h3><div class="lienzo"><canvas id="g-hist-jev"></canvas></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Errores acumulados a lo largo del stream</h2>
+  <p class="tenue">La línea magenta marca la ronda en que empieza el ataque. Bandas: percentiles 10 y 90 entre semillas.</p>
+  <div class="panel">
+    <div class="lienzo alto"><canvas id="g-acumulados"></canvas></div>
+    <div class="leyenda" id="leyenda-acumulados"></div>
+  </div>
+</section>
+
+<section>
+  <h2>A quién le cree Hedge, ronda por ronda</h2>
+  <p class="tenue">Peso medio de cada experto en Hedge randomizado con η de peor caso. Compará con el Hedge del paper, que solo tiene los cinco expertos entrenados en el warm-up.</p>
+  <div class="barra-control" role="group" aria-label="Cantidad de expertos">
+    <button data-k="hedge6" aria-pressed="true">Con Jev (6 expertos)</button>
+    <button data-k="hedge5" aria-pressed="false">Sin Jev (5 expertos)</button>
+  </div>
+  <div class="panel">
+    <div class="lienzo alto"><canvas id="g-pesos"></canvas></div>
+    <div class="leyenda" id="leyenda-pesos"></div>
+  </div>
+  <div class="dos">
+    <div class="panel"><h3>Regret contra el mejor experto fijo</h3><div class="lienzo"><canvas id="g-regret"></canvas></div><p class="nota">Las líneas punteadas son la cota √(2T ln K) de cada configuración.</p></div>
+    <div class="panel"><h3>Errores de cada experto por mitad</h3><div class="lienzo"><canvas id="g-expertos"></canvas></div><p class="nota">El mejor experto fijo en retrospectiva es contra quien se mide el regret.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>¿Cuando Jev dice 80%, acierta el 80% de las veces?</h2>
+  <p class="tenue">Diagrama de confiabilidad: frecuencia real de spam en cada tramo de probabilidad. Sobre la diagonal, la probabilidad es honesta. El tamaño del punto indica cuántos mensajes hay en el tramo.</p>
+  <div class="panel">
+    <div class="lienzo alto"><canvas id="g-calibracion"></canvas></div>
+    <p class="nota" id="nota-ece"></p>
+  </div>
+</section>
+
+<section>
+  <h2>Mandar a revisión solo lo dudoso</h2>
+  <p class="tenue">Con probabilidades calibradas, la zona media se puede derivar a una persona. Mové los límites y mirá cuántos mensajes de la mitad atacada pasan a revisión y cuántos errores quedan. Por debajo del límite inferior se entrega, por encima se bloquea.</p>
+  <div class="panel">
+    <div class="lienzo bajo"><canvas id="g-selectiva"></canvas></div>
+    <div class="deslizadores">
+      <label>Límite inferior: <b id="v-bajo"></b><input type="range" id="r-bajo" min="0" max="0.5" step="0.02" value="0.2"></label>
+      <label>Límite superior: <b id="v-alto"></b><input type="range" id="r-alto" min="0.5" max="1" step="0.02" value="0.8"></label>
+    </div>
+    <div class="cifras">
+      <div class="cifra"><b id="c-revision"></b><span>de los mensajes va a revisión</span></div>
+      <div class="cifra"><b id="c-errores"></b><span>errores automáticos (contra <span id="c-base"></span> sin revisión)</span></div>
+      <div class="cifra"><b id="c-sc"></b><span>spam bloqueado sin intervención</span></div>
+      <div class="cifra"><b id="c-bh"></b><span>ham bloqueado por error</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Pedir la etiqueta donde Jev duda</h2>
+  <p class="tenue">Con el mismo presupuesto de etiquetas, dos formas de pedirlas: al azar con probabilidad ρ, como en el paper, o con más probabilidad donde Jev está cerca de 0,5. Errores en la mitad atacada.</p>
+  <div class="panel">
+    <div class="lienzo alto"><canvas id="g-presupuesto"></canvas></div>
+    <p class="nota" id="nota-presupuesto"></p>
+  </div>
+</section>
+
+<section>
+  <h2>Qué tipo de spam ve Jev</h2>
+  <p class="tenue">Clasificación del spam real del stream (semilla 0) con una pregunta de opción múltiple, en la misma consulta que la probabilidad de spam.</p>
+  <div class="panel"><div class="lienzo bajo"><canvas id="g-tipos"></canvas></div></div>
+</section>
+
+<section>
+  <h2>Resumen por competidor</h2>
+  <div class="panel tabla-envoltorio">
+    <table id="tabla"></table>
+  </div>
+</section>
+
+<footer id="pie"></footer>
+</main>
+
+<script>
+const D = /*__DATOS__*/null;
+
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const NOMBRES = {estatico:"Naive Bayes estático", sgd:"SGD online (reentrena)", hedge5:"Hedge, 5 expertos", hedge6:"Hedge + Jev", jev:"Jev solo"};
+const ORDEN = ["estatico","sgd","hedge5","hedge6","jev"];
+const COLOR_EXPERTO = ["--c-estatico","#B5651D","#7A8B99","#A07CC5","#4B9F6B","--c-jev"];
+const colorDe = c => css("--c-" + c);
+const colorExperto = i => COLOR_EXPERTO[i].startsWith("--") ? css(COLOR_EXPERTO[i]) : COLOR_EXPERTO[i];
+const pct = v => (v == null || isNaN(v)) ? "–" : v.toLocaleString("es-AR",{maximumFractionDigits:1}) + "%";
+const num = (v,d=1) => v.toLocaleString("es-AR",{maximumFractionDigits:d});
+const graficos = {};
+const capital = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+function base(){
+  Chart.defaults.font.family = css("--f-cuerpo");
+  Chart.defaults.font.size = 13;
+  Chart.defaults.color = css("--tenue");
+  Chart.defaults.borderColor = css("--linea");
+  Chart.defaults.plugins.legend.display = false;
+  Chart.defaults.maintainAspectRatio = false;
+  Chart.defaults.animation = matchMedia("(prefers-reduced-motion: reduce)").matches ? false : {duration:500};
+}
+
+// Linea vertical del ataque, para graficos con eje x en rondas.
+const lineaAtaque = {
+  id:"lineaAtaque",
+  afterDatasetsDraw(chart, _a, op){
+    if(!op || op.x == null) return;
+    const {ctx, chartArea:a, scales:{x}} = chart;
+    const px = x.getPixelForValue(op.x);
+    ctx.save(); ctx.strokeStyle = css("--ataque"); ctx.lineWidth = 2; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(px, a.top); ctx.lineTo(px, a.bottom); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = css("--ataque"); ctx.font = "700 12px " + css("--f-cuerpo");
+    ctx.fillText("empieza el ataque", px + 6, a.top + 14); ctx.restore();
+  }
+};
+Chart.register(lineaAtaque);
+
+function crear(id, config){
+  if(graficos[id]) graficos[id].destroy();
+  graficos[id] = new Chart(document.getElementById(id), config);
+}
+
+/* ---------- Hero ---------- */
+let indiceGaleria = 0;
+function hero(){
+  const g = D.galeria;
+  const burbuja = document.getElementById("burbuja");
+  const medidor = document.getElementById("medidor");
+  if(!g.length){ burbuja.textContent = "Sin ejemplos."; return; }
+  const e = g[indiceGaleria % g.length];
+  burbuja.replaceChildren(...e.atacado.flatMap(([w, cambio], i) => {
+    const s = document.createElement("span"); s.textContent = w;
+    if(cambio) s.className = "cambio";
+    return i ? [document.createTextNode(" "), s] : [s];
+  }));
+  document.getElementById("remitente").textContent =
+    `Spam atacado ${indiceGaleria % g.length + 1} de ${g.length}, tipo según Jev: ${e.tipo.replace("_"," ")}`;
+  if(!medidor.children.length){
+    medidor.innerHTML = [["nb","Naive Bayes","--c-estatico"],["jev","Jev","--c-jev"]].map(([k,n,c]) =>
+      `<div class="medidor-fila" style="color:var(${c})"><span style="color:var(--tinta)">${n}</span>
+       <div class="pista"><div class="umbral"></div><div class="marca antes" id="m-${k}-a"></div><div class="marca despues" id="m-${k}-d"></div></div>
+       <span class="valor" id="v-${k}"></span></div>`).join("");
+  }
+  for(const k of ["nb","jev"]){
+    document.getElementById(`m-${k}-a`).style.left = (e[k][0]*100) + "%";
+    document.getElementById(`m-${k}-d`).style.left = (e[k][1]*100) + "%";
+    document.getElementById(`v-${k}`).textContent = `${num(e[k][0],2)} → ${num(e[k][1],2)}`;
+  }
+}
+document.getElementById("otro").addEventListener("click", () => { indiceGaleria++; hero(); });
+
+function respuestaHero(){
+  const r = D.pares_resumen;
+  if(r.nb_despues.atrapados == null) return;
+  document.getElementById("respuesta-hero").textContent =
+    `De ${num(r.cantidad,0)} spam atacados en ${D.meta.semillas} semillas, Naive Bayes atrapa el ${pct(100*r.nb_despues.atrapados)} y Jev el ${pct(100*r.jev_despues.atrapados)}.`;
+}
+
+/* ---------- Spam Caught ---------- */
+function graficoSC(){
+  const filas = ORDEN.map(c => D.competidores[c].segunda.sc);
+  crear("g-sc", {
+    type:"bar",
+    data:{labels:ORDEN.map(c=>NOMBRES[c]), datasets:[{data:filas.map(f=>f.media), backgroundColor:ORDEN.map(colorDe), borderRadius:5, barThickness:22}]},
+    options:{indexAxis:"y", scales:{x:{min:0,max:100,ticks:{callback:v=>v+"%"}}, y:{grid:{display:false}}},
+      plugins:{tooltip:{callbacks:{label:c=>`${pct(filas[c.dataIndex].media)}  (p10 ${pct(filas[c.dataIndex].p10)}, p90 ${pct(filas[c.dataIndex].p90)})`}}}},
+    plugins:[{id:"bigotes", afterDatasetsDraw(ch){
+      const {ctx, scales:{x,y}} = ch; ctx.save(); ctx.strokeStyle = css("--tinta"); ctx.lineWidth = 1.5;
+      filas.forEach((f,i)=>{ const py = y.getPixelForValue(i);
+        ctx.beginPath(); ctx.moveTo(x.getPixelForValue(f.p10),py); ctx.lineTo(x.getPixelForValue(f.p90),py); ctx.stroke();
+        ctx.fillStyle = css("--tinta"); ctx.font = "700 12px "+css("--f-cuerpo"); ctx.fillText(pct(f.media), x.getPixelForValue(Math.max(f.media,f.p90))+8, py+4); });
+      ctx.restore(); }}]
+  });
+}
+
+/* ---------- Pendientes (canvas propio) ---------- */
+function pendiente(id, antes, despues, color){
+  const canvas = document.getElementById(id), padre = canvas.parentElement;
+  const dpr = devicePixelRatio || 1, w = padre.clientWidth, h = padre.clientHeight;
+  canvas.width = w*dpr; canvas.height = h*dpr; canvas.style.width = w+"px"; canvas.style.height = h+"px";
+  const ctx = canvas.getContext("2d"); ctx.scale(dpr,dpr);
+  const m = {l:44, r:44, t:16, b:30}, X0 = m.l, X1 = w - m.r, Y = p => m.t + (1-p)*(h-m.t-m.b);
+  ctx.font = "12px " + css("--f-cuerpo"); ctx.fillStyle = css("--tenue"); ctx.strokeStyle = css("--linea");
+  for(const p of [0,.25,.5,.75,1]){ ctx.beginPath(); ctx.moveTo(X0,Y(p)); ctx.lineTo(X1,Y(p)); ctx.stroke(); ctx.fillText(p.toFixed(2), 6, Y(p)+4); }
+  ctx.strokeStyle = css("--tenue"); ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(X0,Y(.5)); ctx.lineTo(X1,Y(.5)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillText("original", X0-8, h-8); ctx.textAlign = "right"; ctx.fillText("atacado", X1+8, h-8); ctx.textAlign = "left";
+  const alfa = Math.max(.08, Math.min(.5, 18/antes.length));
+  antes.forEach((a,i)=>{ const d = despues[i]; const escapa = a >= .5 && d < .5;
+    ctx.strokeStyle = escapa ? css("--ataque") : color; ctx.globalAlpha = escapa ? Math.min(1, alfa*1.8) : alfa; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(X0, Y(a)); ctx.lineTo(X1, Y(d)); ctx.stroke(); });
+  ctx.globalAlpha = 1;
+}
+function graficosPendiente(){
+  const P = D.pares;
+  pendiente("g-pendiente-nb", P.nb_antes, P.nb_despues, css("--c-estatico"));
+  pendiente("g-pendiente-jev", P.jev_antes, P.jev_despues, css("--c-jev"));
+  const r = D.pares_resumen;
+  if(r.nb_antes.atrapados != null){
+    document.getElementById("nota-nb").textContent = `Atrapa ${pct(100*r.nb_antes.atrapados)} antes y ${pct(100*r.nb_despues.atrapados)} después (todas las semillas). En magenta, los que se escapan por el ataque.`;
+    document.getElementById("nota-jev").textContent = `Atrapa ${pct(100*r.jev_antes.atrapados)} antes y ${pct(100*r.jev_despues.atrapados)} después (todas las semillas).`;
+  }
+}
+
+/* ---------- Histogramas espejados ---------- */
+let mitadHist = "segunda";
+function histograma(id, h){
+  const etiquetas = h.spam.map((_,i)=> ((i+.5)/h.spam.length).toFixed(2));
+  const tot = a => a.reduce((s,v)=>s+v,0) || 1, ts = tot(h.spam), th = tot(h.ham);
+  crear(id, {type:"bar", data:{labels:etiquetas, datasets:[
+    {label:"spam", data:h.spam.map(v=>Math.sqrt(100*v/ts)), crudo:h.spam.map(v=>100*v/ts), backgroundColor:css("--spam"), barPercentage:1, categoryPercentage:.95},
+    {label:"ham", data:h.ham.map(v=>-Math.sqrt(100*v/th)), crudo:h.ham.map(v=>100*v/th), backgroundColor:css("--ham"), barPercentage:1, categoryPercentage:.95}]},
+    options:{scales:{x:{stacked:true, grid:{display:false}, ticks:{autoSkip:false, maxRotation:0, callback:(v,i)=> i%10===0 ? (i/h.spam.length).toFixed(1) : (i===h.spam.length-1 ? "1.0" : "")}, title:{display:true,text:"probabilidad de spam"}},
+      y:{stacked:true, min:-10, max:10, afterBuildTicks:a=>{a.ticks=[-10,-Math.sqrt(50),-Math.sqrt(10),-1,0,1,Math.sqrt(10),Math.sqrt(50),10].map(v=>({value:v}));}, ticks:{callback:v=>Math.round(v*v)+"%"}, title:{display:true,text:"% de su clase (escala raíz)"}}},
+      plugins:{legend:{display:true, labels:{boxWidth:14}}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${num(c.dataset.crudo[c.dataIndex])}% de su clase`}}}}});
+}
+function graficosHist(){
+  histograma("g-hist-nb", D.histogramas[mitadHist].nb);
+  histograma("g-hist-jev", D.histogramas[mitadHist].jev);
+}
+document.querySelectorAll("[data-mitad]").forEach(b => b.addEventListener("click", () => {
+  mitadHist = b.dataset.mitad;
+  document.querySelectorAll("[data-mitad]").forEach(o => o.setAttribute("aria-pressed", o === b));
+  graficosHist();
+}));
+
+/* ---------- Errores acumulados ---------- */
+function graficoAcumulados(){
+  const ds = [];
+  for(const c of ORDEN){
+    const a = D.acumulados[c], col = colorDe(c);
+    const pts = k => D.x.map((x,i)=>({x, y:a[k][i]}));
+    ds.push({data:pts("p10"), borderWidth:0, pointRadius:0, fill:false});
+    ds.push({data:pts("p90"), borderWidth:0, pointRadius:0, fill:"-1", backgroundColor:col+"22"});
+    ds.push({label:NOMBRES[c], data:pts("media"), borderColor:col, borderWidth:c==="hedge6"||c==="jev"?3:2, pointRadius:0, fill:false, tension:.15});
+  }
+  crear("g-acumulados", {type:"line", data:{datasets:ds},
+    options:{interaction:{mode:"nearest",intersect:false}, scales:{x:{type:"linear", max:D.meta.rondas, title:{display:true,text:"ronda del stream"}}, y:{title:{display:true,text:"errores acumulados"}}},
+      plugins:{lineaAtaque:{x:D.meta.inicio}, tooltip:{filter:i=>!!i.dataset.label, callbacks:{label:c=>`${c.dataset.label}: ${num(c.raw.y)}`}}}}});
+  document.getElementById("leyenda-acumulados").innerHTML = ORDEN.map(c=>`<span style="--c:var(--c-${c})">${NOMBRES[c]}</span>`).join("");
+}
+
+/* ---------- Pesos de Hedge ---------- */
+let kPesos = "hedge6";
+function graficoPesos(){
+  const W = D["pesos_" + kPesos], nombres = D.meta.expertos.slice(0, W.length).map(capital);
+  crear("g-pesos", {type:"line", data:{datasets:W.map((serie,i)=>({
+      label:nombres[i], data:D.x.map((x,j)=>({x, y:serie[j]})), fill:i?"-1":"origin",
+      backgroundColor:colorExperto(i)+"CC", borderColor:colorExperto(i), borderWidth:1, pointRadius:0}))},
+    options:{interaction:{mode:"index",intersect:false}, scales:{x:{type:"linear", max:D.meta.rondas, title:{display:true,text:"ronda del stream"}}, y:{stacked:true, min:0, max:1, ticks:{callback:v=>Math.round(v*100)+"%"}, title:{display:true,text:"peso"}}},
+      plugins:{lineaAtaque:{x:D.meta.inicio}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${pct(100*c.raw.y)}`}}}}});
+  document.getElementById("leyenda-pesos").innerHTML = nombres.map((n,i)=>`<span style="--c:${colorExperto(i)}">${n}</span>`).join("");
+}
+document.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => {
+  kPesos = b.dataset.k;
+  document.querySelectorAll("[data-k]").forEach(o => o.setAttribute("aria-pressed", o === b));
+  graficoPesos();
+}));
+
+function graficoRegret(){
+  const serie = (k) => D.x.map((x,i)=>({x, y:D["regret_"+k][i]}));
+  const cota = (k) => D.x.map(x=>({x, y:Math.sqrt(2*x*Math.log(k==="hedge6"?6:5))}));
+  crear("g-regret", {type:"line", data:{datasets:[
+    {label:NOMBRES.hedge5, data:serie("hedge5"), borderColor:colorDe("hedge5"), pointRadius:0, borderWidth:2},
+    {label:NOMBRES.hedge6, data:serie("hedge6"), borderColor:colorDe("hedge6"), pointRadius:0, borderWidth:3},
+    {label:"cota, 5 expertos", data:cota("hedge5"), borderColor:colorDe("hedge5"), borderDash:[4,4], pointRadius:0, borderWidth:1.2},
+    {label:"cota, 6 expertos", data:cota("hedge6"), borderColor:colorDe("hedge6"), borderDash:[4,4], pointRadius:0, borderWidth:1.2}]},
+    options:{interaction:{mode:"nearest",intersect:false}, scales:{x:{type:"linear", max:D.meta.rondas}, y:{title:{display:true,text:"regret acumulado"}}},
+      plugins:{legend:{display:true, labels:{boxWidth:14}}, lineaAtaque:{x:D.meta.inicio}}}});
+}
+
+function graficoExpertos(){
+  const n = D.meta.expertos.map(capital);
+  crear("g-expertos", {type:"bar", data:{labels:n, datasets:[
+    {label:"antes del ataque", data:D.errores_expertos.primera, backgroundColor:css("--linea")},
+    {label:"después del ataque", data:D.errores_expertos.segunda, backgroundColor:n.map((_,i)=>colorExperto(i))}]},
+    options:{indexAxis:"y", scales:{x:{title:{display:true,text:"errores (media entre semillas)"}}, y:{grid:{display:false}}},
+      plugins:{legend:{display:true, labels:{boxWidth:14}}}}});
+}
+
+/* ---------- Calibracion ---------- */
+function graficoCalibracion(){
+  const C = D.calibracion, maxN = Math.max(...C.primera.map(b=>b.n), ...C.segunda.map(b=>b.n));
+  const r = n => 4 + 14*Math.sqrt(n/maxN);
+  const serie = (m, col, label) => ({type:"line", label, data:C[m].map(b=>({x:b.p, y:b.frecuencia, n:b.n})),
+    borderColor:col, backgroundColor:col+"CC", pointRadius:C[m].map(b=>r(b.n)), pointHoverRadius:C[m].map(b=>r(b.n)+2), borderWidth:2, clip:false});
+  crear("g-calibracion", {type:"line", data:{datasets:[
+    {label:"calibración perfecta", data:[{x:0,y:0},{x:1,y:1}], borderColor:css("--tenue"), borderDash:[5,5], pointRadius:0, borderWidth:1},
+    serie("primera", css("--c-jev"), "antes del ataque"),
+    serie("segunda", css("--ataque"), "después del ataque")]},
+    options:{layout:{padding:14}, scales:{x:{type:"linear",min:0,max:1,title:{display:true,text:"probabilidad que da Jev"}}, y:{min:0,max:1,title:{display:true,text:"fracción que era spam"}}},
+      plugins:{legend:{display:true, labels:{boxWidth:14}}, tooltip:{callbacks:{label:c=> c.raw.n ? `${c.dataset.label}: dice ${num(c.raw.x,2)}, real ${num(c.raw.y,2)} (${c.raw.n} mensajes)` : ""}}}}});
+  document.getElementById("nota-ece").textContent =
+    `Error de calibración esperado (ECE): ${num(C.ece_primera,3)} antes del ataque y ${num(C.ece_segunda,3)} después. Cuanto más cerca de 0, más honestas son las probabilidades.`;
+}
+
+/* ---------- Seleccion con revision humana ---------- */
+function selectiva(){
+  const h = D.histogramas.segunda.jev, B = h.spam.length;
+  const lo = +document.getElementById("r-bajo").value, hi = +document.getElementById("r-alto").value;
+  document.getElementById("v-bajo").textContent = num(lo,2);
+  document.getElementById("v-alto").textContent = num(hi,2);
+  const zona = i => { const c = (i+.5)/B; return c < lo ? "entrega" : c >= hi ? "bloquea" : "revision"; };
+  let rev=0, fn=0, fp=0, tp=0, total=0, totSpam=0, totHam=0, base=0;
+  for(let i=0;i<B;i++){ const s=h.spam[i], m=h.ham[i], z=zona(i), c=(i+.5)/B;
+    total+=s+m; totSpam+=s; totHam+=m;
+    base += c >= .5 ? m : s;
+    if(z==="revision") rev+=s+m; else if(z==="bloquea"){ tp+=s; fp+=m; } else fn+=s; }
+  document.getElementById("c-revision").textContent = pct(100*rev/total);
+  document.getElementById("c-errores").textContent = num((fn+fp)/D.meta.semillas,1);
+  document.getElementById("c-base").textContent = num(base/D.meta.semillas,1);
+  document.getElementById("c-sc").textContent = pct(100*tp/totSpam);
+  document.getElementById("c-bh").textContent = pct(100*fp/totHam);
+  const colores = h.spam.map((_,i)=> zona(i)==="revision" ? css("--c-jev") : css("--linea"));
+  const datos = h.spam.map((s,i)=> s + h.ham[i]);
+  if(graficos["g-selectiva"]){ const ch = graficos["g-selectiva"]; ch.data.datasets[0].backgroundColor = colores; ch.update("none"); return; }
+  crear("g-selectiva", {type:"bar", data:{labels:h.spam.map((_,i)=>((i+.5)/B).toFixed(2)), datasets:[{data:datos, backgroundColor:colores, barPercentage:1, categoryPercentage:.95}]},
+    options:{scales:{y:{type:"logarithmic", title:{display:true,text:"mensajes (escala log)"}}, x:{ticks:{autoSkip:false, maxRotation:0, callback:(v,i)=> i%10===0 ? (i/B).toFixed(1) : (i===B-1 ? "1.0" : "")}, title:{display:true,text:"probabilidad de spam según Jev, mitad atacada"}}},
+      plugins:{tooltip:{callbacks:{label:c=>`${num(c.raw/D.meta.semillas,1)} mensajes por semilla`}}}}});
+}
+["r-bajo","r-alto"].forEach(id => document.getElementById(id).addEventListener("input", selectiva));
+
+/* ---------- Presupuesto de etiquetas ---------- */
+function graficoPresupuesto(){
+  const P = D.presupuesto, labels = P.map(f => pct(100*f.rho));
+  const s = (k, label, col, punteada) => ({label, data:P.map(f=>f[k].media), borderColor:col, backgroundColor:col,
+    borderDash:punteada?[6,4]:[], borderWidth:2.5, pointRadius:5, tension:.2, desvios:P.map(f=>f[k].desvio)});
+  crear("g-presupuesto", {type:"line", data:{labels, datasets:[
+    s("hedge_azar", "Hedge + Jev, etiquetas al azar", colorDe("hedge6"), true),
+    s("hedge_guiado", "Hedge + Jev, guiado por la duda de Jev", colorDe("hedge6"), false),
+    s("sgd_azar", "SGD online, etiquetas al azar", colorDe("sgd"), true),
+    s("sgd_guiado", "SGD online, guiado por la duda de Jev", colorDe("sgd"), false)]},
+    options:{scales:{x:{title:{display:true,text:"fracción de mensajes etiquetados (ρ)"}}, y:{title:{display:true,text:"errores en la mitad atacada"}}},
+      plugins:{legend:{display:true, labels:{usePointStyle:true, pointStyle:"line", boxWidth:30}}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${num(c.raw)} ± ${num(c.dataset.desvios[c.dataIndex])}`}}}}});
+  const f = P[P.length-1];
+  document.getElementById("nota-presupuesto").textContent =
+    `Con ρ = ${pct(100*f.rho)} se piden en promedio ${num(f.etiquetas_azar.media,0)} etiquetas al azar y ${num(f.etiquetas_guiado.media,0)} guiadas. La política guiada usa importance weighting (pérdida / q_t), así que Hedge sigue recibiendo actualizaciones insesgadas. Entre las etiquetas guiadas, el ${pct(100*f.spam_en_etiquetas_guiado.media)} son spam.`;
+}
+
+/* ---------- Tipos ---------- */
+function graficoTipos(){
+  const T = Object.entries(D.tipos_spam).sort((a,b)=>b[1]-a[1]);
+  const nombre = {premio:"premio o sorteo", servicio_premium:"servicio premium o suscripción", oferta:"oferta comercial", citas_chat:"citas o chat", estafa:"estafa o phishing", no_spam:"Jev dice que no es spam"};
+  crear("g-tipos", {type:"bar", data:{labels:T.map(t=>nombre[t[0]]||t[0]), datasets:[{data:T.map(t=>t[1]),
+    backgroundColor:T.map(t=> t[0]==="no_spam" ? css("--linea") : css("--spam")), borderRadius:4, barThickness:20}]},
+    options:{indexAxis:"y", scales:{x:{title:{display:true,text:"mensajes de spam"}}, y:{grid:{display:false}}}}});
+}
+
+/* ---------- Tabla ---------- */
+function tabla(){
+  const C = D.competidores;
+  const celdas = (c, m) => ["errores","sc","bh","mcc"].map(k => {
+    const v = C[c][m][k].media; return `<td>${k==="mcc" ? num(v,3) : k==="errores" ? num(v,1) : pct(v)}</td>`; }).join("");
+  document.getElementById("tabla").innerHTML =
+    `<thead><tr><th rowspan="2">Competidor</th><th colspan="4">Antes del ataque</th><th colspan="4">Después del ataque</th></tr>
+     <tr>${"<th>Errores</th><th>SC</th><th>BH</th><th>MCC</th>".repeat(2)}</tr></thead>
+     <tbody>${ORDEN.map(c=>`<tr><td><span class="punto" style="--c:var(--c-${c})"></span>${NOMBRES[c]}</td>${celdas(c,"primera")}${celdas(c,"segunda")}</tr>`).join("")}</tbody>`;
+}
+
+function pie(){
+  const M = D.meta;
+  document.getElementById("pie").innerHTML =
+    `<p>SMS Spam Collection (Almeida et al., 2011), ${M.rondas} rondas de stream por semilla, ataque desde la ronda ${M.inicio}. ${M.semillas} semillas de permutación; Hedge promediado sobre 20 sorteos por semilla. Modelo: <b>${M.modelo}</b>, primitiva Noul con umbral 0,5, sin ejemplos ni ajuste sobre el corpus. Generado el ${M.generado}.</p>
+     <p>Extensión de <i>Aprendizaje online con Hedge para detección de spam</i> (P. Díaz y E. Martinez, MCD210, UdeSA). El adversario es oblivious y se calibra contra Naive Bayes: Jev no es el objetivo del ataque, y un spammer que atacara a Jev directamente podría tener otro resultado.</p>`;
+}
+
+function dibujarTodo(){
+  base(); graficoSC(); graficosPendiente(); graficosHist(); graficoAcumulados(); graficoPesos();
+  graficoRegret(); graficoExpertos(); graficoCalibracion(); delete graficos["g-selectiva"]; selectiva(); graficoPresupuesto(); graficoTipos();
+}
+
+document.getElementById("franja-simulado").hidden = !D.meta.simulado;
+document.querySelectorAll(".n-semillas").forEach(e => e.textContent = D.meta.semillas);
+hero(); respuestaHero(); tabla(); pie(); dibujarTodo();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { Object.values(graficos).forEach(g=>g.destroy()); for(const k in graficos) delete graficos[k]; dibujarTodo(); });
+let espera; addEventListener("resize", () => { clearTimeout(espera); espera = setTimeout(graficosPendiente, 150); });
+</script>
+</body>
+</html>

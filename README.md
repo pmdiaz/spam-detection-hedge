@@ -74,6 +74,21 @@ Otras opciones, que se pueden combinar:
 El script usa el Python de `~/.pyenv/versions/3.12.13/bin/python3`. Para usar otro:
 `PYTHON=/ruta/a/python3 ./correr_todo.sh --desde-cero`.
 
+## Extensión: Jev como sexto experto
+
+`src/experimento_jev.py` repite el experimento agregando a Jev (TypeSafe AI) como experto zero-shot y
+genera `figuras/dashboard_jev.html`, un dashboard interactivo autocontenido. Necesita
+`pip install typesafe-sdk` y una API key en `TYPESAFE_API_KEY`
+([console.typesafe.ai](https://console.typesafe.ai/)). Las respuestas de Jev se guardan en
+`resultados/jev/`, así que cada texto se consulta una sola vez (unas 11 mil consultas, centavos de dólar).
+
+```bash
+export TYPESAFE_API_KEY=...
+cd src && python experimento_jev.py            # 20 semillas
+python experimento_jev.py --semillas 0 1 2     # prueba corta
+python experimento_jev.py --simular            # Jev FALSO, solo para probar el pipeline
+```
+
 ## Datos
 
 **SMS Spam Collection** (Almeida et al., 2011): 5.574 mensajes, 747 spam (13,40%).

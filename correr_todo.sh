@@ -38,7 +38,7 @@ PAUSA=0
 DESDE=0
 HASTA=99
 DESDE_CERO=0
-
+export TYPESAFE_API_KEY=api_key_que_no_existe_para_evitar_que_el_script_llame_a_typesafe 
 while [ $# -gt 0 ]; do
     case "$1" in
         --pausa)
@@ -131,12 +131,15 @@ etapa 7 "Experimento completo con 20 semillas"              experimento.py
 etapa 7 "Agregacion de las 20 semillas"                     agregar_resultados.py
 etapa 7 "Robustez: SGD reponderado por 1/rho"              reponderacion_sgd.py
 etapa 8 "Figuras del paper"                                 figuras.py
+# Etapa 10 (extension): necesita TYPESAFE_API_KEY. Para saltearla: --hasta 8
+etapa 10 "Jev como sexto experto y dashboard"               experimento_jev.py
 
 echo
 echo "=================================================================="
 echo " Listo en $((SECONDS / 60)) min $((SECONDS % 60)) s"
 echo " Tablas:   resultados/resumen.json"
 echo " Figuras:  figuras/*.pdf"
+echo " Jev:      figuras/dashboard_jev.html"
 echo " Log:      resultados/corrida_completa.log"
 echo " La etapa 9 (paper) se compila en Overleaf: paper/paper.tex"
 echo "=================================================================="
